@@ -6,21 +6,28 @@ use App\Http\Requests\StoreItineraryRequest;
 use App\Http\Requests\UpdateItineraryRequest;
 use App\Models\Itinerary;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class ItineraryController extends Controller
 {
-    public function index()
+    public function index(): View
     {
-        $itineraries = auth()->user()->itineraries()->latest()->paginate(12);
+        // Eager load days and budgets to prevent N+1
+        $itineraries = auth()->user()->itineraries()
+            ->with(['days', 'budgets'])
+            ->latest()
+            ->paginate(12);
+        
         return view('itineraries.index', compact('itineraries'));
     }
 
-    public function create()
+    public function create(): View
     {
         return view('itineraries.create');
     }
 
-    public function store(StoreItineraryRequest $request)
+    public function store(StoreItineraryRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -33,7 +40,7 @@ class ItineraryController extends Controller
             ->with('success', 'Itinerary created successfully!');
     }
 
-    public function show(Itinerary $itinerary)
+    public function show(Itinerary $itinerary): View
     {
         $this->authorize('view', $itinerary);
         
@@ -42,14 +49,14 @@ class ItineraryController extends Controller
         return view('itineraries.show', compact('itinerary'));
     }
 
-    public function edit(Itinerary $itinerary)
+    public function edit(Itinerary $itinerary): View
     {
         $this->authorize('update', $itinerary);
         
         return view('itineraries.edit', compact('itinerary'));
     }
 
-    public function update(UpdateItineraryRequest $request, Itinerary $itinerary)
+    public function update(UpdateItineraryRequest $request, Itinerary $itinerary): RedirectResponse
     {
         $this->authorize('update', $itinerary);
         
@@ -61,7 +68,7 @@ class ItineraryController extends Controller
             ->with('success', 'Itinerary updated successfully!');
     }
 
-    public function destroy(Itinerary $itinerary)
+    public function destroy(Itinerary $itinerary): RedirectResponse
     {
         $this->authorize('delete', $itinerary);
         

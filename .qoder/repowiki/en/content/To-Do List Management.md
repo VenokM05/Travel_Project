@@ -5,6 +5,8 @@
 - [Todo.php](file://app/Models/Todo.php)
 - [Itinerary.php](file://app/Models/Itinerary.php)
 - [TodoController.php](file://app/Http/Controllers/TodoController.php)
+- [StoreTodoRequest.php](file://app/Http/Requests/StoreTodoRequest.php)
+- [UpdateTodoRequest.php](file://app/Http/Requests/UpdateTodoRequest.php)
 - [ItineraryController.php](file://app/Http/Controllers/ItineraryController.php)
 - [TodoPolicy.php](file://app/Policies/TodoPolicy.php)
 - [2026_04_21_132810_create_todos_table.php](file://database/migrations/2026_04_21_132810_create_todos_table.php)
@@ -14,6 +16,14 @@
 - [create.blade.php](file://resources/views/todos/create.blade.php)
 - [User.php](file://app/Models/User.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated TodoController documentation to reflect the new Form Request validation approach
+- Added documentation for StoreTodoRequest and UpdateTodoRequest classes
+- Updated controller operation sections to show centralized validation
+- Enhanced validation and authorization documentation
+- Updated code examples to reflect the streamlined controller implementation
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -30,10 +40,13 @@
 ## Introduction
 This document explains the to-do list management system designed for organizing tasks and preparing trips. It covers how to create, assign, set priorities, track completion, and filter tasks. It also documents the integration with itineraries to provide context-aware suggestions and automatic task generation aligned with planned activities. The Todo model supports status tracking, due dates, categories, and optional linkage to itineraries. Authorization ensures users can only manage their own tasks. The UI provides filtering, sorting, and quick actions for productivity during travel planning.
 
+**Updated** The TodoController now uses centralized Form Request validation classes for improved code organization and maintainability.
+
 ## Project Structure
-The to-do feature spans models, controllers, policies, migrations, routes, and Blade views:
+The to-do feature spans models, controllers, Form Request validation classes, policies, migrations, routes, and Blade views:
 - Models define Todo and Itinerary structures and relationships.
-- Controllers handle HTTP requests for CRUD operations, authorization, validation, and status toggling.
+- Controllers handle HTTP requests for CRUD operations, authorization, and status toggling.
+- Form Request classes encapsulate validation logic for store and update operations.
 - Policies enforce per-task ownership checks.
 - Migrations define database schema and indexes.
 - Routes expose resource endpoints and a dedicated toggle endpoint.
@@ -50,6 +63,10 @@ subgraph "Controllers"
 TC["TodoController.php"]
 IC["ItineraryController.php"]
 end
+subgraph "Form Requests"
+STR["StoreTodoRequest.php"]
+UR["UpdateTodoRequest.php"]
+end
 subgraph "Policies"
 TP["TodoPolicy.php"]
 end
@@ -64,6 +81,8 @@ U --> T
 U --> I
 I --> T
 TC --> T
+TC --> STR
+TC --> UR
 TC --> TP
 IC --> I
 R --> TC
@@ -75,7 +94,9 @@ VC --> TC
 **Diagram sources**
 - [Todo.php:1-35](file://app/Models/Todo.php#L1-L35)
 - [Itinerary.php:1-58](file://app/Models/Itinerary.php#L1-L58)
-- [TodoController.php:1-132](file://app/Http/Controllers/TodoController.php#L1-L132)
+- [TodoController.php:1-120](file://app/Http/Controllers/TodoController.php#L1-L120)
+- [StoreTodoRequest.php:1-48](file://app/Http/Requests/StoreTodoRequest.php#L1-L48)
+- [UpdateTodoRequest.php:1-48](file://app/Http/Requests/UpdateTodoRequest.php#L1-L48)
 - [ItineraryController.php:1-88](file://app/Http/Controllers/ItineraryController.php#L1-L88)
 - [TodoPolicy.php:1-50](file://app/Policies/TodoPolicy.php#L1-L50)
 - [web.php:40-42](file://routes/web.php#L40-L42)
@@ -85,7 +106,9 @@ VC --> TC
 **Section sources**
 - [Todo.php:1-35](file://app/Models/Todo.php#L1-L35)
 - [Itinerary.php:1-58](file://app/Models/Itinerary.php#L1-L58)
-- [TodoController.php:1-132](file://app/Http/Controllers/TodoController.php#L1-L132)
+- [TodoController.php:1-120](file://app/Http/Controllers/TodoController.php#L1-L120)
+- [StoreTodoRequest.php:1-48](file://app/Http/Requests/StoreTodoRequest.php#L1-L48)
+- [UpdateTodoRequest.php:1-48](file://app/Http/Requests/UpdateTodoRequest.php#L1-L48)
 - [ItineraryController.php:1-88](file://app/Http/Controllers/ItineraryController.php#L1-L88)
 - [TodoPolicy.php:1-50](file://app/Policies/TodoPolicy.php#L1-L50)
 - [web.php:40-42](file://routes/web.php#L40-L42)
@@ -102,49 +125,62 @@ VC --> TC
   - Casts start_date, end_date, budget_total.
   - Relationships: belongs to User, has many ItineraryDay, has many Budget, has many Todo, has many Memory, has many TravelGroup.
 - TodoController
-  - Index: fetches current user’s todos, applies filters (status, priority, category), sorts, paginates, computes stats, loads itineraries.
+  - Index: fetches current user's todos, applies filters (status, priority, category), sorts, paginates, computes stats, loads itineraries.
   - Create/Edit: load itineraries for selection.
-  - Store/Update: validates inputs, assigns user_id, persists Todo.
+  - Store/Update: receives validated data from Form Request classes, assigns user_id, persists Todo.
   - Destroy: deletes Todo after authorization.
   - Toggle status: switches between pending and completed with authorization.
   - Authorization: uses TodoPolicy for view/update/delete.
+- Form Request Classes
+  - StoreTodoRequest: validates creation data with comprehensive rules and custom error messages.
+  - UpdateTodoRequest: validates update data with identical rules to ensure consistency.
 - Routes
   - Resource routes for todos with a dedicated PATCH endpoint for toggling status.
 - Views
   - Index: displays stats cards, filter form, task list with priority/status badges, overdue indicators, optional itinerary association, and actions.
   - Create: form with title, description, priority, status, due date, category, optional itinerary linking.
 
+**Updated** The controller now delegates all validation to dedicated Form Request classes, resulting in cleaner and more maintainable code.
+
 **Section sources**
 - [Todo.php:10-33](file://app/Models/Todo.php#L10-L33)
 - [Itinerary.php:11-56](file://app/Models/Itinerary.php#L11-L56)
-- [TodoController.php:11-130](file://app/Http/Controllers/TodoController.php#L11-L130)
+- [TodoController.php:11-118](file://app/Http/Controllers/TodoController.php#L11-L118)
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
+- [UpdateTodoRequest.php:18-46](file://app/Http/Requests/UpdateTodoRequest.php#L18-L46)
 - [web.php:40-42](file://routes/web.php#L40-L42)
 - [index.blade.php:19-231](file://resources/views/todos/index.blade.php#L19-L231)
 - [create.blade.php:14-154](file://resources/views/todos/create.blade.php#L14-L154)
 
 ## Architecture Overview
-The system follows MVC with explicit authorization and resource routing. Todos belong to users and optionally to itineraries. Controllers orchestrate validation, authorization, persistence, and presentation. Views render filtered and paginated lists with actionable UI elements.
+The system follows MVC with explicit authorization and resource routing. Todos belong to users and optionally to itineraries. Controllers orchestrate authorization, delegation to Form Request validation classes, persistence, and presentation. Views render filtered and paginated lists with actionable UI elements.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Browser"
 participant Web as "web.php"
-participant TodoCtrl as "TodoController@index"
+participant TodoCtrl as "TodoController@store"
+participant StoreReq as "StoreTodoRequest"
+participant Validator as "Validation Rules"
 participant Policy as "TodoPolicy"
-participant DB as "DB : todos, itineraries"
-Client->>Web : GET /todos
-Web->>TodoCtrl : dispatch index()
-TodoCtrl->>Policy : viewAny(auth user)
+participant DB as "DB : todos"
+Client->>Web : POST /todos
+Web->>TodoCtrl : dispatch store()
+TodoCtrl->>StoreReq : instantiate with request data
+StoreReq->>Validator : validate(title, description, due_date, priority, status, category, itinerary_id)
+Validator-->>StoreReq : validated data
+StoreReq-->>TodoCtrl : validated data
+TodoCtrl->>Policy : authorize('create')
 Policy-->>TodoCtrl : allow
-TodoCtrl->>DB : query user.todos with filters/sort
-DB-->>TodoCtrl : paginated todos + stats
-TodoCtrl-->>Client : render todos/index.blade.php
+TodoCtrl->>DB : insert with user_id
+DB-->>TodoCtrl : persisted
+TodoCtrl-->>Client : redirect to todos.index with success
 ```
 
 **Diagram sources**
 - [web.php:40-42](file://routes/web.php#L40-L42)
-- [TodoController.php:11-48](file://app/Http/Controllers/TodoController.php#L11-L48)
-- [TodoPolicy.php:13-16](file://app/Policies/TodoPolicy.php#L13-L16)
+- [TodoController.php:60-70](file://app/Http/Controllers/TodoController.php#L60-L70)
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
 
 ## Detailed Component Analysis
 
@@ -203,9 +239,9 @@ Itinerary "1" --> "many" Todos : "contains"
 - [Todo.php:10-33](file://app/Models/Todo.php#L10-L33)
 - [2026_04_21_132810_create_todos_table.php:14-28](file://database/migrations/2026_04_21_132810_create_todos_table.php#L14-L28)
 
-### TodoController Operations, Validation, and Authorization
+### TodoController Operations, Centralized Validation, and Authorization
 - Index
-  - Fetches current user’s todos.
+  - Fetches current user's todos.
   - Applies filters: status, priority, category.
   - Sorts by due_date ascending by default; supports direction parameter.
   - Paginates results.
@@ -214,7 +250,7 @@ Itinerary "1" --> "many" Todos : "contains"
 - Create/Edit
   - Loads itineraries for selection.
 - Store/Update
-  - Validates required fields and enums.
+  - Receives validated data from Form Request classes.
   - Assigns user_id from authenticated user.
   - Persists Todo.
 - Destroy
@@ -222,17 +258,20 @@ Itinerary "1" --> "many" Todos : "contains"
 - Toggle Status
   - Switches between pending and completed with authorization.
 
+**Updated** The controller now delegates all validation to dedicated Form Request classes, resulting in cleaner and more maintainable code.
+
 ```mermaid
 sequenceDiagram
 participant Client as "Browser"
 participant Web as "web.php"
 participant TodoCtrl as "TodoController@store"
-participant Validator as "Validation Rules"
+participant StoreReq as "StoreTodoRequest"
 participant DB as "DB : todos"
 Client->>Web : POST /todos
 Web->>TodoCtrl : dispatch store()
-TodoCtrl->>Validator : validate(title, description, due_date, priority, status, category, itinerary_id)
-Validator-->>TodoCtrl : validated data
+TodoCtrl->>StoreReq : instantiate with request data
+StoreReq->>StoreReq : validate() with rules
+StoreReq-->>TodoCtrl : validated data
 TodoCtrl->>DB : insert with user_id
 DB-->>TodoCtrl : persisted
 TodoCtrl-->>Client : redirect to todos.index with success
@@ -240,10 +279,42 @@ TodoCtrl-->>Client : redirect to todos.index with success
 
 **Diagram sources**
 - [web.php:40-42](file://routes/web.php#L40-L42)
-- [TodoController.php:56-74](file://app/Http/Controllers/TodoController.php#L56-L74)
+- [TodoController.php:60-70](file://app/Http/Controllers/TodoController.php#L60-L70)
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
 
 **Section sources**
-- [TodoController.php:11-130](file://app/Http/Controllers/TodoController.php#L11-L130)
+- [TodoController.php:11-118](file://app/Http/Controllers/TodoController.php#L11-L118)
+
+### Form Request Validation Classes
+- StoreTodoRequest
+  - Authorize: always returns true for authentication.
+  - Rules: comprehensive validation for all Todo fields with proper constraints.
+  - Messages: custom error messages for validation failures.
+- UpdateTodoRequest
+  - Mirrors StoreTodoRequest validation rules for consistency.
+  - Authorize: always returns true for authentication.
+  - Messages: custom error messages for validation failures.
+
+**Updated** Both Form Request classes provide centralized validation logic, improving code organization and reusability.
+
+```mermaid
+flowchart TD
+Start(["Form Request Validation"]) --> Validate["Validate Input Data"]
+Validate --> Rules["Apply Validation Rules"]
+Rules --> Success{"Validation Passes?"}
+Success --> |Yes| ReturnData["Return Validated Data"]
+Success --> |No| ErrorMsg["Return Custom Error Messages"]
+ReturnData --> Controller["Controller Receives Validated Data"]
+ErrorMsg --> Response["Return Validation Errors"]
+```
+
+**Diagram sources**
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
+- [UpdateTodoRequest.php:18-46](file://app/Http/Requests/UpdateTodoRequest.php#L18-L46)
+
+**Section sources**
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
+- [UpdateTodoRequest.php:18-46](file://app/Http/Requests/UpdateTodoRequest.php#L18-L46)
 
 ### Authorization with TodoPolicy
 - viewAny: always allowed.
@@ -277,7 +348,7 @@ Deny --> End
 - Automatic task generation
   - The current code does not implement automatic task generation from itinerary activities. To support this, you could:
     - Extend ItineraryDay to include suggested tasks derived from activities.
-    - Add a “Generate tasks” action in the UI that creates Todos linked to the selected Itinerary.
+    - Add a "Generate tasks" action in the UI that creates Todos linked to the selected Itinerary.
     - Introduce templates or rules mapping activity types to task categories and priorities.
 
 ```mermaid
@@ -321,10 +392,10 @@ Toggle --> Stats
 
 ### Common Task Management Scenarios and Productivity Tips
 - Scenario: Plan pre-trip tasks
-  - Create Todos with “Pre-trip” category, due dates aligned with departure, and high/urgent priority.
+  - Create Todos with "Pre-trip" category, due dates aligned with departure, and high/urgent priority.
   - Link to the relevant Itinerary for context.
 - Scenario: Track daily tasks during the trip
-  - Use “During trip” category, set due dates to each day, and adjust priorities based on activity schedules.
+  - Use "During trip" category, set due dates to each day, and adjust priorities based on activity schedules.
 - Scenario: Batch completion
   - Use the inline toggle to mark tasks complete; overdue tasks are visually highlighted to maintain focus.
 - Productivity tips
@@ -336,15 +407,22 @@ Toggle --> Stats
 [No sources needed since this section provides general guidance]
 
 ## Dependency Analysis
-- Controllers depend on models, policies, and routes.
+- Controllers depend on models, Form Request validation classes, policies, and routes.
+- Form Request classes depend on validation rules and Laravel's FormRequest base class.
 - Views depend on controller-provided data and route helpers.
 - Migrations define schema and indexes that support filtering and sorting.
+
+**Updated** The dependency structure now includes Form Request validation classes as central validation components.
 
 ```mermaid
 graph TB
 TC["TodoController"] --> T["Todo Model"]
+TC --> STR["StoreTodoRequest"]
+TC --> UR["UpdateTodoRequest"]
 TC --> P["TodoPolicy"]
 TC --> R["web.php Routes"]
+STR --> VR["Validation Rules"]
+UR --> VR
 VI["todos/index.blade.php"] --> TC
 VC["todos/create.blade.php"] --> TC
 T --> DBT["DB: todos"]
@@ -355,6 +433,8 @@ TC --> DBI
 
 **Diagram sources**
 - [TodoController.php:5-10](file://app/Http/Controllers/TodoController.php#L5-L10)
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
+- [UpdateTodoRequest.php:18-46](file://app/Http/Requests/UpdateTodoRequest.php#L18-L46)
 - [Todo.php:8-34](file://app/Models/Todo.php#L8-L34)
 - [Itinerary.php:9-57](file://app/Models/Itinerary.php#L9-L57)
 - [web.php:40-42](file://routes/web.php#L40-L42)
@@ -363,6 +443,8 @@ TC --> DBI
 
 **Section sources**
 - [TodoController.php:5-10](file://app/Http/Controllers/TodoController.php#L5-L10)
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
+- [UpdateTodoRequest.php:18-46](file://app/Http/Requests/UpdateTodoRequest.php#L18-L46)
 - [Todo.php:8-34](file://app/Models/Todo.php#L8-L34)
 - [Itinerary.php:9-57](file://app/Models/Itinerary.php#L9-L57)
 - [web.php:40-42](file://routes/web.php#L40-L42)
@@ -382,19 +464,25 @@ TC --> DBI
 ## Troubleshooting Guide
 - Validation errors
   - Ensure title is present and within length limits; priority and status must match allowed enums; due_date must be a valid date; itinerary_id must exist if provided.
+  - Form Request classes provide comprehensive validation with custom error messages.
 - Authorization failures
   - Only the task owner can view, update, or delete a Todo.
 - Status toggle issues
   - Toggle endpoint switches between pending and completed; ensure the Todo exists and the user is authorized.
 
+**Updated** Validation errors are now handled centrally by Form Request classes with custom error messages.
+
 **Section sources**
-- [TodoController.php:58-66](file://app/Http/Controllers/TodoController.php#L58-L66)
+- [StoreTodoRequest.php:39-46](file://app/Http/Requests/StoreTodoRequest.php#L39-L46)
+- [UpdateTodoRequest.php:39-46](file://app/Http/Requests/UpdateTodoRequest.php#L39-L46)
 - [TodoController.php:89-101](file://app/Http/Controllers/TodoController.php#L89-L101)
-- [TodoController.php:118-130](file://app/Http/Controllers/TodoController.php#L118-L130)
+- [TodoController.php:118-118](file://app/Http/Controllers/TodoController.php#L118-L118)
 - [TodoPolicy.php:21-47](file://app/Policies/TodoPolicy.php#L21-L47)
 
 ## Conclusion
-The to-do list management system provides a robust foundation for organizing travel-related tasks. Users can create, filter, sort, and toggle tasks while linking them to itineraries for contextual awareness. The model and controller design, combined with authorization and UI features, enable efficient trip preparation. Extending the system with automatic task generation from itinerary activities would further streamline planning.
+The to-do list management system provides a robust foundation for organizing travel-related tasks. Users can create, filter, sort, and toggle tasks while linking them to itineraries for contextual awareness. The model and controller design, combined with centralized Form Request validation and authorization and UI features, enable efficient trip preparation. The refactored controller with dedicated validation classes improves code organization and maintainability. Extending the system with automatic task generation from itinerary activities would further streamline planning.
+
+**Updated** The system now benefits from centralized validation through Form Request classes, resulting in cleaner controller code and improved maintainability.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -412,7 +500,14 @@ The to-do list management system provides a robust foundation for organizing tra
   - PATCH /todos/{todo}/toggle — toggle status
 - Filters and sorting
   - Query parameters: status, priority, category, sort, direction.
+- Form Request Validation
+  - StoreTodoRequest: validates creation data with comprehensive rules.
+  - UpdateTodoRequest: validates update data with identical rules.
+
+**Updated** Added Form Request validation classes to the operation summary.
 
 **Section sources**
 - [web.php:40-42](file://routes/web.php#L40-L42)
 - [TodoController.php:11-36](file://app/Http/Controllers/TodoController.php#L11-L36)
+- [StoreTodoRequest.php:18-46](file://app/Http/Requests/StoreTodoRequest.php#L18-L46)
+- [UpdateTodoRequest.php:18-46](file://app/Http/Requests/UpdateTodoRequest.php#L18-L46)

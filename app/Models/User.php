@@ -7,6 +7,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -62,78 +64,78 @@ class User extends Authenticatable
     }
 
     // Relationships
-    public function itineraries()
+    public function itineraries(): HasMany
     {
         return $this->hasMany(Itinerary::class);
     }
 
-    public function budgets()
+    public function budgets(): HasMany
     {
         return $this->hasMany(Budget::class);
     }
 
-    public function budgetSplits()
+    public function budgetSplits(): HasMany
     {
         return $this->hasMany(BudgetSplit::class);
     }
 
-    public function todos()
+    public function todos(): HasMany
     {
         return $this->hasMany(Todo::class);
     }
 
-    public function posts()
+    public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
     }
 
-    public function stories()
+    public function stories(): HasMany
     {
         return $this->hasMany(Story::class);
     }
 
-    public function reels()
+    public function reels(): HasMany
     {
         return $this->hasMany(Reel::class);
     }
 
-    public function memories()
+    public function memories(): HasMany
     {
         return $this->hasMany(Memory::class);
     }
 
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }
 
-    public function likes()
+    public function likes(): HasMany
     {
         return $this->hasMany(Like::class);
     }
 
-    public function subscriptions()
+    public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
     }
 
-    public function travelGroups()
+    public function travelGroups(): HasMany
     {
         return $this->hasMany(TravelGroup::class, 'created_by');
     }
 
-    public function groupMemberships()
+    public function groupMemberships(): HasMany
     {
         return $this->hasMany(GroupMember::class);
     }
 
     // Follow relationships
-    public function followers()
+    public function followers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'follows', 'following_id', 'follower_id')->withTimestamps();
     }
 
-    public function following()
+    public function following(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'follows', 'follower_id', 'following_id')->withTimestamps();
     }

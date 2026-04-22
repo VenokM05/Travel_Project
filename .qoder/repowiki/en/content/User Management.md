@@ -4,24 +4,19 @@
 **Referenced Files in This Document**
 - [ProfileController.php](file://app/Http/Controllers/ProfileController.php)
 - [UserController.php](file://app/Http/Controllers/UserController.php)
-- [SubscriptionController.php](file://app/Http/Controllers/SubscriptionController.php)
-- [User.php](file://app/Models/User.php)
+- [UserService.php](file://app/Services/UserService.php)
 - [ProfileUpdateRequest.php](file://app/Http/Requests/ProfileUpdateRequest.php)
 - [web.php](file://routes/web.php)
-- [settings.blade.php](file://resources/views/settings.blade.php)
-- [edit.blade.php](file://resources/views/profile/edit.blade.php)
-- [create_users_table.php](file://database/migrations/0001_01_01_000000_create_users_table.php)
-- [add_preferences_to_users_table.php](file://database/migrations/2026_04_21_140001_add_preferences_to_users_table.php)
-- [plans.blade.php](file://resources/views/subscription/plans.blade.php)
+- [User.php](file://app/Models/User.php)
 </cite>
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive settings management interface documentation with 6 distinct sections
-- Updated ProfileController to include updatePreferences method for settings management
-- Enhanced User model with new preference attributes and storage calculation methods
-- Added settings page routing and form handling documentation
-- Updated architecture diagrams to reflect new settings management workflow
+- Updated UserController to use Service Layer Pattern with UserService for all business logic
+- Enhanced ProfileController with comprehensive preference management capabilities
+- Improved validation through Form Request classes and centralized validation logic
+- Maintained backward compatibility while modernizing the architecture
+- Enhanced user discovery functionality with service layer integration
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -29,7 +24,7 @@
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
 5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Settings Management Interface](#settings-management-interface)
+6. [Service Layer Integration](#service-layer-integration)
 7. [Dependency Analysis](#dependency-analysis)
 8. [Performance Considerations](#performance-considerations)
 9. [Privacy and Security Measures](#privacy-and-security-measures)
@@ -37,174 +32,130 @@
 11. [Conclusion](#conclusion)
 
 ## Introduction
-This document provides comprehensive documentation for the user management system, covering profile editing, user discovery, account administration, and the new comprehensive settings management interface. The system now features six distinct sections including Account Settings, Notification Preferences, Privacy Settings, Subscription & Storage, Travel Preferences, and Danger Zone. It explains avatar upload, personal information editing, preference settings, account deletion, user search and discovery functionality with privacy-aware filtering, and subscription management with storage usage visualization.
+This document provides comprehensive documentation for the user management system, covering profile editing, user discovery, account administration, and the new service layer architecture. The system now features a clean separation of concerns with UserController acting as a thin controller that delegates business logic to UserService, while ProfileController handles comprehensive profile management including avatar upload, personal information editing, preference settings, and account deletion. The system implements Form Request validation for consistent data validation and maintains robust security measures.
 
 ## Project Structure
-The user management system spans controllers, models, requests, views, and routes. The new settings interface adds a comprehensive management layer with modern UI components, form handling, CSRF protection, and dynamic content rendering based on user subscription tiers and storage usage.
+The user management system follows a modern MVC architecture with service layer integration. Controllers handle HTTP requests and responses, UserService encapsulates business logic, and Form Requests provide centralized validation. The system maintains clean separation of concerns while providing comprehensive user management capabilities.
 
 ```mermaid
 graph TB
 subgraph "Controllers"
 PC["ProfileController.php"]
 UC["UserController.php"]
-SC["SubscriptionController.php"]
 end
-subgraph "Models"
-U["User.php"]
+subgraph "Services"
+US["UserService.php"]
 end
 subgraph "Requests"
 PUR["ProfileUpdateRequest.php"]
 end
-subgraph "Views"
-SE["settings.blade.php"]
-PE["profile/edit.blade.php"]
-PL["subscription/plans.blade.php"]
+subgraph "Models"
+U["User.php"]
 end
 subgraph "Routes"
 WR["routes/web.php"]
 end
-subgraph "Migrations"
-CUT["database/migrations/create_users_table.php"]
-AP["database/migrations/add_preferences_to_users_table.php"]
-end
 PC --> PUR
 PC --> U
+UC --> US
 UC --> U
-SC --> PL
-SE --> PC
-SE --> SC
-PE --> U
+US --> U
 WR --> PC
 WR --> UC
-WR --> SC
-CUT --> U
-AP --> U
 ```
 
 **Diagram sources**
 - [ProfileController.php:1-111](file://app/Http/Controllers/ProfileController.php#L1-L111)
-- [UserController.php:1-120](file://app/Http/Controllers/UserController.php#L1-L120)
-- [SubscriptionController.php:1-14](file://app/Http/Controllers/SubscriptionController.php#L1-L14)
-- [User.php:1-172](file://app/Models/User.php#L1-L172)
-- [settings.blade.php:1-275](file://resources/views/settings.blade.php#L1-L275)
-- [edit.blade.php:1-30](file://resources/views/profile/edit.blade.php#L1-L30)
-- [plans.blade.php:1-115](file://resources/views/subscription/plans.blade.php#L1-L115)
-- [web.php:1-82](file://routes/web.php#L1-L82)
-- [create_users_table.php:1-57](file://database/migrations/0001_01_01_000000_create_users_table.php#L1-L57)
-- [add_preferences_to_users_table.php:1-32](file://database/migrations/2026_04_21_140001_add_preferences_to_users_table.php#L1-L32)
+- [UserController.php:1-100](file://app/Http/Controllers/UserController.php#L1-L100)
+- [UserService.php:1-140](file://app/Services/UserService.php#L1-L140)
+- [ProfileUpdateRequest.php:1-32](file://app/Http/Requests/ProfileUpdateRequest.php#L1-L32)
+- [web.php:14-82](file://routes/web.php#L14-L82)
 
 **Section sources**
-- [web.php:14-79](file://routes/web.php#L14-L79)
+- [web.php:14-82](file://routes/web.php#L14-L82)
 - [ProfileController.php:13-111](file://app/Http/Controllers/ProfileController.php#L13-L111)
-- [UserController.php:8-120](file://app/Http/Controllers/UserController.php#L8-L120)
-- [User.php:11-172](file://app/Models/User.php#L11-L172)
+- [UserController.php:9-100](file://app/Http/Controllers/UserController.php#L9-L100)
+- [UserService.php:8-140](file://app/Services/UserService.php#L8-L140)
 
 ## Core Components
-- **ProfileController**: Handles profile editing, avatar upload, password updates, comprehensive preference updates (including notification and privacy settings), and account deletion. Implements validation, authorization checks, and secure session termination during deletion.
-- **UserController**: Manages user discovery, including search, suggestions, and follow/unfollow operations. Provides paginated follower/following lists and user profile display.
-- **SubscriptionController**: Manages subscription plan viewing and upgrade processes.
-- **User Model**: Defines fillable attributes, hidden fields, casts, and relationships including follows, posts, stories, reels, memories, comments, likes, subscriptions, itineraries, budgets, todos, and travel groups. Now includes comprehensive preference attributes and storage calculation methods.
-- **ProfileUpdateRequest**: Encapsulates validation rules for profile updates, ensuring unique email per user.
-- **Settings Interface**: New comprehensive settings management page with six distinct sections for user customization.
+- **ProfileController**: Handles comprehensive profile management including profile editing, avatar upload, password updates, preference settings, and account deletion. Implements Form Request validation and maintains email verification handling.
+- **UserController**: Now acts as a thin controller that delegates all business logic to UserService, handling user discovery, search, suggestions, and follow operations with improved architecture.
+- **UserService**: Centralized business logic layer providing user search, suggestions, follow/unfollow operations, profile data retrieval, and pagination support.
+- **ProfileUpdateRequest**: Form Request class providing centralized validation rules for profile updates with unique email constraint.
+- **User Model**: Enhanced with comprehensive attributes, relationships, and helper methods for subscription management and preference handling.
 
 Key capabilities:
-- Profile editing with email verification handling upon email change.
-- Avatar upload with image validation and storage.
-- Comprehensive preference settings for notifications, privacy, and travel preferences.
-- Account deletion with confirmation and session cleanup.
-- User search by username or name with pagination.
-- Following system with toggle and suggestions.
-- Subscription management with tier-based storage limits.
-- Dynamic storage usage visualization and remaining space calculation.
-- Modern UI components with form handling and CSRF protection.
+- Clean separation of concerns with service layer integration
+- Comprehensive Form Request validation for all user operations
+- Enhanced user discovery with intelligent suggestion algorithms
+- Secure preference management with validation and authorization
+- Efficient pagination and eager loading for performance optimization
+- Modern architecture supporting scalability and maintainability
 
 **Section sources**
 - [ProfileController.php:18-111](file://app/Http/Controllers/ProfileController.php#L18-L111)
-- [UserController.php:13-118](file://app/Http/Controllers/UserController.php#L13-L118)
-- [SubscriptionController.php:9-12](file://app/Http/Controllers/SubscriptionController.php#L9-L12)
-- [User.php:21-62](file://app/Models/User.php#L21-L62)
-- [settings.blade.php:10-275](file://resources/views/settings.blade.php#L10-L275)
+- [UserController.php:11-100](file://app/Http/Controllers/UserController.php#L11-L100)
+- [UserService.php:18-140](file://app/Services/UserService.php#L18-L140)
+- [ProfileUpdateRequest.php:17-30](file://app/Http/Requests/ProfileUpdateRequest.php#L17-L30)
 
 ## Architecture Overview
-The system follows MVC architecture with explicit separation of concerns and the new comprehensive settings management interface:
-- Controllers receive requests and delegate to models and views.
-- Models encapsulate business logic and relationships including new preference attributes.
-- Requests enforce validation rules.
-- Views render HTML with Blade templating, including the new settings interface.
-- Routes define URL-to-action mappings with dedicated settings route.
+The system follows a modern MVC architecture with service layer integration, providing clean separation of concerns and improved maintainability:
+
+- Controllers act as thin layers receiving requests and delegating to services
+- Services encapsulate business logic and data operations
+- Form Requests provide centralized validation with reusable rules
+- Models handle data persistence and relationships
+- Routes define URL-to-action mappings with proper HTTP methods
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client Browser"
 participant Routes as "Web Routes"
-participant Settings as "Settings Page"
-participant PC as "ProfileController"
 participant UC as "UserController"
-participant SC as "SubscriptionController"
+participant US as "UserService"
 participant User as "User Model"
-participant View as "Blade Views"
-Client->>Routes : GET /settings
-Routes->>Settings : settings.blade.php
-Settings->>View : Render settings interface
-Client->>Routes : PATCH /profile/preferences
-Routes->>PC : updatePreferences()
-PC->>User : validate and update preferences
-PC->>View : Redirect to settings with success
-Client->>Routes : GET /subscription/plans
-Routes->>SC : plans()
-SC->>View : subscription/plans.blade.php
+Client->>Routes : GET /users/search?q=query
+Routes->>UC : index(Request)
+UC->>US : searchUsers(query, excludeUser)
+US->>User : Query builder operations
+US-->>UC : Collection<User>
+UC-->>Client : users/search.blade.php
 ```
 
 **Diagram sources**
-- [web.php:75-79](file://routes/web.php#L75-L79)
-- [settings.blade.php:56-94](file://resources/views/settings.blade.php#L56-L94)
-- [ProfileController.php:97-109](file://app/Http/Controllers/ProfileController.php#L97-L109)
-- [SubscriptionController.php:9-12](file://app/Http/Controllers/SubscriptionController.php#L9-L12)
+- [web.php:24-25](file://routes/web.php#L24-L25)
+- [UserController.php:17-28](file://app/Http/Controllers/UserController.php#L17-L28)
+- [UserService.php:18-25](file://app/Services/UserService.php#L18-L25)
 
 ## Detailed Component Analysis
 
 ### ProfileController Analysis
 Responsibilities:
-- Edit profile page rendering.
-- Update profile information with validation and email verification reset.
-- Delete account with password confirmation, logout, and session invalidation.
-- Update avatar with image validation and storage.
-- Update password with confirmation and hashing.
-- **NEW**: Update comprehensive notification, privacy, and travel preferences.
+- Comprehensive profile management including editing, updating, avatar upload, password changes, and preference settings
+- Form Request validation for profile updates with unique email constraint
+- Secure account deletion with password confirmation and session cleanup
+- Preference management with validation for boolean and enum values
 
 Processing logic highlights:
-- Email change triggers email verification reset.
-- Account deletion enforces current password, logs out, deletes user, invalidates session, and regenerates CSRF token.
-- Avatar upload validates image type and size, stores under public avatars, and saves URL.
-- **NEW**: Preferences update validates boolean values and enum options, then persists to user record with comprehensive preference handling.
+- Profile updates validated through ProfileUpdateRequest ensuring unique email per user
+- Avatar upload with image validation and storage in public avatars directory
+- Preference updates validated with boolean and enum constraints for notification and privacy settings
+- Account deletion enforces current password, logs out, deletes user, and invalidates session
 
 ```mermaid
 flowchart TD
 Start(["ProfileController Action"]) --> Choice{"Action Type"}
-Choice --> |edit| RenderEdit["Render profile/edit.blade.php"]
-Choice --> |update| ValidateProfile["Validate via ProfileUpdateRequest"]
+Choice --> |edit| RenderEdit["Render profile.edit view"]
+Choice --> |update| ValidateProfile["ProfileUpdateRequest validation"]
 ValidateProfile --> DirtyEmail{"Email changed?"}
 DirtyEmail --> |Yes| ResetEmail["Set email_verified_at=null"]
 DirtyEmail --> |No| SkipReset["Skip reset"]
 ResetEmail --> SaveUser["Save user record"]
 SkipReset --> SaveUser
 SaveUser --> RedirectEdit["Redirect to profile.edit with status"]
-Choice --> |destroy| ValidatePassword["Validate current password"]
-ValidatePassword --> Logout["Logout current user"]
-Logout --> DeleteUser["Delete user record"]
-DeleteUser --> InvalidateSession["Invalidate session and regenerate token"]
-InvalidateSession --> RedirectHome["Redirect to /"]
-Choice --> |updateAvatar| ValidateImage["Validate image mime/type/size"]
-ValidateImage --> StoreAvatar["Store avatar in storage:public avatars"]
-StoreAvatar --> SaveUrl["Update user.avatar URL"]
-SaveUrl --> RedirectAvatar["Redirect to profile.edit with status"]
-Choice --> |updatePassword| ValidatePass["Validate current + new password"]
-ValidatePass --> HashPass["Hash new password"]
-HashPass --> SavePass["Update user.password"]
-SavePass --> RedirectPass["Redirect to profile.edit with status"]
 Choice --> |updatePreferences| ValidatePrefs["Validate booleans and enums"]
 ValidatePrefs --> SavePrefs["Update user preferences"]
-SavePrefs --> RedirectPrefs["Redirect to settings with status"]
+SavePrefs --> RedirectPrefs["Redirect to profile.edit with status"]
 ```
 
 **Diagram sources**
@@ -216,57 +167,88 @@ SavePrefs --> RedirectPrefs["Redirect to settings with status"]
 - [ProfileUpdateRequest.php:17-30](file://app/Http/Requests/ProfileUpdateRequest.php#L17-L30)
 
 ### UserController Analysis
-Responsibilities:
-- Search users by username or name, excluding self, with limit and pagination support.
-- Show user profile with counts and media.
-- Toggle follow/unfollow relationship with JSON support.
-- List followers and following with pagination.
-- Provide user suggestions based on non-following users.
+**Updated** Enhanced with service layer integration and improved architecture.
 
-Discovery and recommendation logic:
-- Search filters by username and name using LIKE queries, excludes current user, limits results.
-- Suggestions exclude current user and existing followings, selects randomly limited set.
+Responsibilities:
+- Thin controller layer that delegates all business logic to UserService
+- User search with query parameter validation and empty result handling
+- Profile display with comprehensive data loading and pagination
+- Follow/unfollow operations with JSON support and validation
+- Follower/following listing with pagination support
+- Intelligent user suggestions with randomization and exclusion logic
+
+Business logic delegation:
+- All user operations delegated to UserService for better separation of concerns
+- Search, suggestions, and follow operations handled in service layer
+- Profile data loading and pagination managed by service methods
+- Validation handled through Form Requests and service method parameters
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client Browser"
 participant Routes as "Web Routes"
 participant UC as "UserController"
+participant US as "UserService"
 participant User as "User Model"
 Client->>Routes : GET /users/search?q=query
 Routes->>UC : index(Request)
-UC->>User : where(username like %q%) or where(name like %q%)
-UC->>User : where(id != auth()->id())->limit(20)
+UC->>US : searchUsers(query, excludeUser)
+US->>User : Query builder operations
+US-->>UC : Collection<User>
 UC-->>Client : users/search.blade.php
 Client->>Routes : POST /users/{user}/follow
 Routes->>UC : follow(User)
-UC->>User : following()->attach/detach
-UC-->>Client : JSON {success,isFollowing,followersCount} or redirect
-Client->>Routes : GET /users/{user}
-Routes->>UC : show(User)
-UC->>User : loadCount(posts,followers,following)
-UC->>User : posts()->with(['user','likes','comments'])->latest()->paginate(12)
-UC-->>Client : users/show.blade.php
+UC->>US : toggleFollow(follower, target)
+US->>User : following()->attach/detach
+US-->>UC : bool isFollowing
+UC-->>Client : JSON response or redirect
 ```
 
 **Diagram sources**
-- [UserController.php:13-118](file://app/Http/Controllers/UserController.php#L13-L118)
+- [UserController.php:17-28](file://app/Http/Controllers/UserController.php#L17-L28)
+- [UserController.php:47-64](file://app/Http/Controllers/UserController.php#L47-L64)
+- [UserService.php:18-25](file://app/Services/UserService.php#L18-L25)
+- [UserService.php:54-63](file://app/Services/UserService.php#L54-L63)
 
 **Section sources**
-- [UserController.php:13-118](file://app/Http/Controllers/UserController.php#L13-L118)
+- [UserController.php:17-98](file://app/Http/Controllers/UserController.php#L17-L98)
+- [UserService.php:18-140](file://app/Services/UserService.php#L18-L140)
+
+### UserService Analysis
+**New** Centralized business logic layer providing comprehensive user management operations.
+
+Responsibilities:
+- User search with LIKE queries and exclusion logic
+- Intelligent user suggestions with randomization and exclusion
+- Follow/unfollow operations with state management
+- Profile data aggregation with count loading
+- Pagination support for followers/following operations
+- Post and reel retrieval with relationships
+
+Key features:
+- Search operations exclude current user and limit results
+- Suggestions exclude existing followings and use random ordering
+- Toggle operations handle both follow and unfollow states
+- Eager loading for performance optimization
+- Configurable limits and pagination parameters
+
+**Section sources**
+- [UserService.php:18-140](file://app/Services/UserService.php#L18-L140)
 
 ### User Model Analysis
-**Updated** Enhanced with comprehensive preference attributes and storage calculation methods.
+Enhanced with comprehensive attributes and helper methods for modern user management.
 
 Attributes and casts:
-- Fillable includes personal info, credentials, avatar, bio, subscription fields, and new preference flags.
-- Hidden fields protect sensitive data.
-- Casts normalize booleans and dates, including new preference boolean casts.
+- Fillable includes comprehensive user attributes including preferences
+- Hidden fields protect sensitive authentication data
+- Casts normalize boolean values for notification preferences
+- Enhanced subscription-related attributes for storage management
 
 Relationships:
-- Self-referencing many-to-many follows with pivot timestamps.
-- One-to-many relationships to posts, stories, reels, memories, comments, likes, itineraries, budgets, todos, subscriptions, travel groups, and budget splits.
-- **NEW**: Helper methods for subscription status, storage limits, and remaining storage calculation.
+- Self-referencing many-to-many relationships for following/followers
+- One-to-many relationships for all content types (posts, stories, reels, etc.)
+- Helper methods for subscription status and storage calculations
+- Follow checking methods for relationship state
 
 ```mermaid
 classDiagram
@@ -286,6 +268,8 @@ class User {
 +boolean notification_push
 +string profile_privacy
 +string default_post_privacy
++isFollowing(user) bool
++isFollowedBy(user) bool
 +hasActiveSubscription() bool
 +getStorageLimit() int
 +getStorageRemaining() decimal
@@ -314,229 +298,157 @@ Follow --> User : "following"
 ```
 
 **Diagram sources**
-- [User.php:21-62](file://app/Models/User.php#L21-L62)
-- [User.php:151-171](file://app/Models/User.php#L151-L171)
-- [Follow.php:10-23](file://app/Models/Follow.php#L10-L23)
+- [User.php:23-64](file://app/Models/User.php#L23-L64)
+- [User.php:143-173](file://app/Models/User.php#L143-L173)
 
 **Section sources**
-- [User.php:21-62](file://app/Models/User.php#L21-L62)
-- [User.php:151-171](file://app/Models/User.php#L151-L171)
-- [add_preferences_to_users_table.php:14-19](file://database/migrations/2026_04_21_140001_add_preferences_to_users_table.php#L14-L19)
+- [User.php:23-64](file://app/Models/User.php#L23-L64)
+- [User.php:143-173](file://app/Models/User.php#L143-L173)
 
-### Profile Forms and Authorization
-**Updated** Enhanced with comprehensive settings management interface.
+## Service Layer Integration
 
-- Profile edit page aggregates three partials: update profile information, update password, and delete account.
-- **NEW**: Settings page provides six distinct sections with modern UI components and form handling.
-- Update profile information form posts to the profile update route with CSRF and method override.
-- Update password form posts to the password update route.
-- **NEW**: Settings forms use PATCH method for preference updates with CSRF protection.
-- Delete account form requires password confirmation and uses DELETE method.
-- All profile routes are protected by the auth middleware.
+### Architecture Benefits
+The introduction of UserService provides several architectural benefits:
 
-Authorization and validation:
-- Profile updates validated by ProfileUpdateRequest ensuring unique email per user.
-- **NEW**: Settings preference updates validated with boolean and enum constraints.
-- Account deletion requires current password via validation bag.
-- Password updates validated with current password check and confirmation.
+- **Clean Separation of Concerns**: Controllers remain thin, focusing only on HTTP concerns
+- **Testability**: Business logic isolated in services for easier unit testing
+- **Reusability**: Shared business logic accessible across multiple controllers
+- **Maintainability**: Centralized logic reduces duplication and improves consistency
+- **Scalability**: Service layer supports complex business operations without controller bloat
 
-**Section sources**
-- [edit.blade.php:10-26](file://resources/views/profile/edit.blade.php#L10-L26)
-- [settings.blade.php:56-94](file://resources/views/settings.blade.php#L56-L94)
-- [settings.blade.php:105-160](file://resources/views/settings.blade.php#L105-L160)
-
-## Settings Management Interface
-
-### Overview
-The new settings management interface provides comprehensive user customization capabilities across six distinct sections with modern UI components, form handling, CSRF protection, and dynamic content rendering based on user subscription tiers and storage usage.
-
-### Settings Sections
-
-#### Account Settings
-- **Profile Information**: Links to profile editing page for name, username, and bio updates
-- **Password**: Direct link to password change functionality
-- **Avatar**: Direct link to avatar update functionality
-
-#### Notification Preferences
-- **Email Notifications**: Toggle switch for email-based updates
-- **Push Notifications**: Toggle switch for browser push notifications
-- Form submission uses PATCH method with CSRF protection
-
-#### Privacy Settings
-- **Profile Privacy**: Radio button selection between public and private visibility
-- **Default Post Privacy**: Radio button selection among public, followers-only, and private
-- Form submission uses PATCH method with CSRF protection
-
-#### Subscription & Storage
-- **Current Plan**: Displays active subscription tier with color-coded badges
-- **Storage Usage**: Interactive progress bar showing used vs. total storage capacity
-- **Upgrade Plan**: Link to subscription plans page for plan upgrades
-
-#### Travel Preferences
-- **Default Currency**: Placeholder for currency preference (future implementation)
-- **Date Format**: Placeholder for date format preference (future implementation)
-- **Distance Units**: Placeholder for measurement units (future implementation)
-- **Time Zone**: Placeholder for time zone preference (future implementation)
-- **Note**: Informative message indicating future availability
-
-#### Danger Zone
-- **Delete All Data**: Disabled button with safety message (future implementation)
-- **Delete Account**: Direct link to account deletion process
-
-### Technical Implementation
-- **Form Handling**: Each settings section contains its own form with appropriate HTTP methods (GET for navigation, PATCH for updates)
-- **CSRF Protection**: All forms include proper CSRF tokens and method field overrides
-- **Dynamic Rendering**: Settings adapt based on user subscription tier and storage usage
-- **Visual Feedback**: Progress bars, color-coded badges, and interactive elements
-- **Accessibility**: Proper labeling, keyboard navigation, and screen reader support
+### Service Method Responsibilities
+- **Search Operations**: User search with intelligent filtering and exclusion logic
+- **Relationship Management**: Follow/unfollow operations with state consistency
+- **Data Aggregation**: Profile data loading with count optimization
+- **Pagination Support**: Built-in pagination for large datasets
+- **Validation Integration**: Methods accept validated data from Form Requests
 
 **Section sources**
-- [settings.blade.php:10-275](file://resources/views/settings.blade.php#L10-L275)
-- [web.php:75-79](file://routes/web.php#L75-L79)
-- [ProfileController.php:97-109](file://app/Http/Controllers/ProfileController.php#L97-L109)
+- [UserService.php:18-140](file://app/Services/UserService.php#L18-L140)
+- [UserController.php:11-100](file://app/Http/Controllers/UserController.php#L11-L100)
 
 ## Dependency Analysis
-**Updated** Enhanced with settings management dependencies.
+Enhanced with service layer dependencies and improved architecture.
 
-- Controllers depend on models and requests for validation.
-- Views depend on controllers for data and routes for links.
-- Routes bind controllers to URLs, including new settings route.
-- Migrations define database schema and new preferences columns.
-- **NEW**: Settings interface depends on ProfileController for preference updates and SubscriptionController for plan management.
+- Controllers depend on services for business logic, not directly on models
+- Services depend on models for data operations and relationships
+- Form Requests provide centralized validation for controllers
+- Routes bind controllers to URLs with proper HTTP methods
+- Models handle data persistence and relationship definitions
 
 ```mermaid
 graph LR
 WR["routes/web.php"] --> PC["ProfileController.php"]
 WR --> UC["UserController.php"]
-WR --> SC["SubscriptionController.php"]
 PC --> PUR["ProfileUpdateRequest.php"]
 PC --> U["User.php"]
-UC --> U
-SC --> PL["subscription/plans.blade.php"]
-SE["settings.blade.php"] --> PC
-SE --> SC
-PE["profile/edit.blade.php"] --> U
-USV["users/search.blade.php"] --> U
-UDV["users/show.blade.php"] --> U
-CUT["create_users_table.php"] --> U
-AP["add_preferences_to_users_table.php"] --> U
+UC --> US["UserService.php"]
+US --> U
+US --> PUR
 ```
 
 **Diagram sources**
-- [web.php:14-79](file://routes/web.php#L14-L79)
-- [settings.blade.php:56-94](file://resources/views/settings.blade.php#L56-L94)
-- [ProfileController.php:5-11](file://app/Http/Controllers/ProfileController.php#L5-L11)
-- [SubscriptionController.php:7-13](file://app/Http/Controllers/SubscriptionController.php#L7-L13)
+- [web.php:14-82](file://routes/web.php#L14-L82)
+- [UserController.php:11-12](file://app/Http/Controllers/UserController.php#L11-L12)
+- [UserService.php:5-6](file://app/Services/UserService.php#L5-L6)
 
 **Section sources**
-- [web.php:14-79](file://routes/web.php#L14-L79)
+- [web.php:14-82](file://routes/web.php#L14-L82)
 
 ## Performance Considerations
-**Updated** Enhanced with settings interface performance considerations.
+Enhanced with service layer performance optimizations and improved architecture.
 
-- Pagination: UserController uses paginate for followers/following and posts to avoid large result sets.
-- Limits: Search limits results to reduce database load.
-- Eager loading: UserController eager loads counts and relations for profile display.
-- **NEW**: Settings interface uses client-side rendering with server-provided data, reducing server load.
-- **NEW**: Storage calculations performed server-side to prevent manipulation.
-- Indexes: Unique indexes on username and email improve lookup performance.
-- Storage: Avatar uploads are validated and stored efficiently; consider CDN for scalability.
+- **Eager Loading**: UserService methods implement eager loading for relationships
+- **Pagination**: Built-in pagination support prevents memory issues with large datasets
+- **Query Optimization**: Service methods use efficient query patterns with proper indexing
+- **Method Chaining**: Fluent interface for readable and efficient query construction
+- **Caching Opportunities**: Service layer supports caching strategies for frequently accessed data
+- **Database Indexes**: Proper indexing on commonly queried columns (username, email, timestamps)
 
 Recommendations:
-- Add database indexes for frequently queried columns.
-- Implement caching for user stats and suggestions.
-- Optimize LIKE queries with full-text search for larger datasets.
-- Use chunked processing for bulk operations.
-- **NEW**: Consider client-side caching for settings data to reduce server requests.
+- Monitor query performance using Laravel Debugbar
+- Implement caching for user suggestions and frequently accessed profiles
+- Use database query optimization techniques for complex searches
+- Consider database connection pooling for high-traffic scenarios
+- Implement proper indexing strategy for user search operations
 
 **Section sources**
+- [UserService.php:101-137](file://app/Services/UserService.php#L101-L137)
 - [UserController.php:35-42](file://app/Http/Controllers/UserController.php#L35-L42)
-- [UserController.php:78-93](file://app/Http/Controllers/UserController.php#L78-L93)
-- [User.php:158-170](file://app/Models/User.php#L158-L170)
 
 ## Privacy and Security Measures
-**Updated** Enhanced with comprehensive security measures for settings interface.
+Enhanced with comprehensive security measures and improved validation.
 
 Data protection and compliance:
-- Hidden fields prevent sensitive data exposure in serialization.
-- Passwords are hashed via framework mechanisms.
-- Email verification reset on email change ensures compliance with verification policies.
-- Account deletion includes logout, session invalidation, and token regeneration.
-- **NEW**: Settings preferences validated with strict boolean and enum constraints.
-- **NEW**: CSRF protection implemented across all settings forms.
+- Form Request validation ensures consistent data validation across all operations
+- Passwords are hashed automatically through model casting
+- Email verification reset on email change maintains security policies
+- Account deletion includes comprehensive session cleanup and token regeneration
+- CSRF protection through Laravel's built-in form protection
+- Input validation prevents malicious data injection
 
 Security controls:
-- Auth middleware protects all user management routes.
-- Current password validation for destructive actions (password change, account deletion).
-- **NEW**: Input validation for all preference settings with whitelist enforcement.
-- Strict validation for profile updates and preferences.
-- CSRF protection via forms and route model binding.
-- **NEW**: Subscription tier validation prevents unauthorized plan upgrades.
+- Auth middleware protects all user management routes
+- Current password validation for destructive operations
+- Unique email validation prevents duplicate accounts
+- Form Request validation provides centralized security rules
+- Proper authorization checks for user operations
 
 Best practices:
-- Enforce strong password policies.
-- Implement rate limiting for authentication attempts.
-- Regularly audit permissions and roles.
-- Monitor failed deletion attempts and suspicious activity.
-- **NEW**: Log preference change attempts for security auditing.
-
-**Section sources**
-- [User.php:43-46](file://app/Models/User.php#L43-L46)
-- [User.php:55-61](file://app/Models/User.php#L55-L61)
-- [ProfileController.php:97-109](file://app/Http/Controllers/ProfileController.php#L97-L109)
-
-## Troubleshooting Guide
-**Updated** Enhanced with settings interface troubleshooting.
-
-Common issues and resolutions:
-- Profile update fails due to duplicate email:
-  - Ensure unique email validation passes; check ProfileUpdateRequest rules.
-  - Reference: [ProfileUpdateRequest.php:21-29](file://app/Http/Requests/ProfileUpdateRequest.php#L21-L29)
-- Avatar upload errors:
-  - Verify image MIME type and size constraints; confirm storage permissions.
-  - Reference: [ProfileController.php:67-76](file://app/Http/Controllers/ProfileController.php#L67-L76)
-- Password change not applied:
-  - Confirm current password matches and new password meets confirmation rules.
-  - Reference: [PasswordController.php:18-27](file://app/Http/Controllers/Auth/PasswordController.php#L18-L27)
-- Account deletion does not terminate session:
-  - Ensure current password validation passes and session invalidation occurs.
-  - Reference: [ProfileController.php:46-58](file://app/Http/Controllers/ProfileController.php#L46-L58)
-- User search returns empty:
-  - Check query parameter presence and ensure non-empty input.
-  - Reference: [UserController.php:15-19](file://app/Http/Controllers/UserController.php#L15-L19)
-- Follow toggle not working:
-  - Verify authentication and that self-follow is prevented.
-  - Reference: [UserController.php:50-52](file://app/Http/Controllers/UserController.php#L50-L52)
-- **NEW**: Settings preferences not saving:
-  - Verify CSRF token is present and form method is correct (PATCH).
-  - Check browser console for JavaScript errors.
-  - Ensure user has proper authentication.
-- **NEW**: Storage usage shows incorrect values:
-  - Verify subscription tier is properly set in database.
-  - Check storage_used field format and decimal precision.
-- **NEW**: Settings page displays incorrectly:
-  - Clear browser cache and cookies.
-  - Verify all required JavaScript libraries are loaded.
-  - Check for CSS conflicts with custom styling.
-
-Operational tips:
-- Use browser developer tools to inspect network requests and responses.
-- Enable logging for failed validations and authorization failures.
-- Test edge cases: self-follow, duplicate follow/unfollow, and boundary conditions for preferences.
-- **NEW**: Use browser developer tools to debug settings form submissions and preference updates.
-- **NEW**: Monitor network tab for failed preference update requests and error responses.
+- Regular security audits of Form Request validation rules
+- Monitor failed authentication attempts and suspicious activities
+- Implement rate limiting for user search and follow operations
+- Regular validation of service layer inputs and outputs
+- Maintain audit logs for critical user operations
 
 **Section sources**
 - [ProfileUpdateRequest.php:17-30](file://app/Http/Requests/ProfileUpdateRequest.php#L17-L30)
-- [ProfileController.php:67-109](file://app/Http/Controllers/ProfileController.php#L67-L109)
-- [UserController.php:15-19](file://app/Http/Controllers/UserController.php#L15-L19)
-- [UserController.php:50-52](file://app/Http/Controllers/UserController.php#L50-L52)
+- [ProfileController.php:44-60](file://app/Http/Controllers/ProfileController.php#L44-L60)
+- [UserController.php:49-51](file://app/Http/Controllers/UserController.php#L49-L51)
+
+## Troubleshooting Guide
+Enhanced with service layer troubleshooting and improved debugging approaches.
+
+Common issues and resolutions:
+- **Profile update validation failures**:
+  - Check ProfileUpdateRequest rules for unique email constraint
+  - Verify Form Request is properly imported and used
+  - Reference: [ProfileUpdateRequest.php:21-29](file://app/Http/Requests/ProfileUpdateRequest.php#L21-L29)
+- **User search returns empty results**:
+  - Verify query parameter is present and not empty
+  - Check UserService search method implementation
+  - Ensure proper LIKE query syntax and exclusions
+- **Follow operation fails**:
+  - Verify authentication and self-follow prevention
+  - Check UserService toggleFollow method logic
+  - Ensure proper JSON response handling
+- **Service layer errors**:
+  - Verify UserService constructor injection
+  - Check service method signatures and return types
+  - Ensure proper exception handling in service methods
+- **Preference updates not applying**:
+  - Verify Form Request validation rules
+  - Check database column existence and types
+  - Ensure proper casting in User model
+
+Debugging approaches:
+- Use Laravel Debugbar to monitor query performance and execution
+- Enable query logging for service layer operations
+- Implement proper error handling and logging in service methods
+- Use Laravel's built-in testing utilities for service method validation
+- Monitor application logs for service layer exceptions
+
+**Section sources**
+- [ProfileUpdateRequest.php:17-30](file://app/Http/Requests/ProfileUpdateRequest.php#L17-L30)
+- [UserController.php:17-28](file://app/Http/Controllers/UserController.php#L17-L28)
+- [UserController.php:47-64](file://app/Http/Controllers/UserController.php#L47-L64)
+- [UserService.php:18-140](file://app/Services/UserService.php#L18-L140)
 
 ## Conclusion
-The user management system provides robust profile editing, secure account administration, effective user discovery, and comprehensive settings management. The new settings interface adds six distinct sections including Account Settings, Notification Preferences, Privacy Settings, Subscription & Storage, Travel Preferences, and Danger Zone, providing extensive user customization capabilities with modern UI components, form handling, CSRF protection, and dynamic content rendering based on user subscription tiers and storage usage.
+The user management system provides robust profile editing, secure account administration, and efficient user discovery through a modern service layer architecture. The enhanced UserController with UserService integration demonstrates clean separation of concerns, improved maintainability, and better testability. ProfileController continues to handle comprehensive profile management with Form Request validation and secure operations.
 
-ProfileController, UserController, and SubscriptionController implement comprehensive CRUD operations with validation, authorization, and privacy-aware logic. The enhanced User model encapsulates relationships, helper methods, and new preference attributes essential for the comprehensive settings interface. Security measures include middleware protection, password hashing, email verification handling, safe deletion procedures, and strict input validation for settings preferences.
+The service layer approach enables scalable development, centralized business logic, and improved code organization. Form Request validation ensures consistent data validation across all user operations, while the User model provides comprehensive attribute management and helper methods for subscription and preference handling.
 
-Performance considerations such as pagination, limits, eager loading, and efficient settings rendering ensure responsiveness. The new settings interface leverages client-side rendering with server-provided data to minimize server load while providing rich user interaction capabilities.
+Security measures include middleware protection, Form Request validation, proper authorization checks, and comprehensive input sanitization. Performance optimizations through eager loading, pagination, and query optimization ensure responsive user experiences even with large datasets.
 
-Adhering to the outlined best practices and troubleshooting steps will maintain a reliable, secure, and compliant user management experience with the comprehensive settings management interface.
+The modern architecture supports future enhancements, maintains backward compatibility, and provides a solid foundation for continued development of user management features.

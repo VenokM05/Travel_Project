@@ -7,12 +7,14 @@ use App\Http\Requests\UpdateTodoRequest;
 use App\Models\Todo;
 use App\Models\Itinerary;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class TodoController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $query = auth()->user()->todos();
+        $query = auth()->user()->todos()->with('itinerary'); // Eager load itinerary to prevent N+1
         
         // Filter by status
         if ($request->filled('status')) {
@@ -49,13 +51,13 @@ class TodoController extends Controller
         return view('todos.index', compact('todos', 'itineraries', 'stats'));
     }
 
-    public function create()
+    public function create(): View
     {
         $itineraries = auth()->user()->itineraries()->get();
         return view('todos.create', compact('itineraries'));
     }
 
-    public function store(StoreTodoRequest $request)
+    public function store(StoreTodoRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -67,20 +69,20 @@ class TodoController extends Controller
             ->with('success', 'Task created successfully!');
     }
 
-    public function show(Todo $todo)
+    public function show(Todo $todo): View
     {
         $this->authorize('view', $todo);
         return view('todos.show', compact('todo'));
     }
 
-    public function edit(Todo $todo)
+    public function edit(Todo $todo): View
     {
         $this->authorize('update', $todo);
         $itineraries = auth()->user()->itineraries()->get();
         return view('todos.edit', compact('todo', 'itineraries'));
     }
 
-    public function update(UpdateTodoRequest $request, Todo $todo)
+    public function update(UpdateTodoRequest $request, Todo $todo): RedirectResponse
     {
         $this->authorize('update', $todo);
         
@@ -92,7 +94,7 @@ class TodoController extends Controller
             ->with('success', 'Task updated successfully!');
     }
 
-    public function destroy(Todo $todo)
+    public function destroy(Todo $todo): RedirectResponse
     {
         $this->authorize('delete', $todo);
         $todo->delete();
@@ -101,7 +103,7 @@ class TodoController extends Controller
             ->with('success', 'Task deleted successfully!');
     }
 
-    public function toggleStatus(Todo $todo)
+    public function toggleStatus(Todo $todo): RedirectResponse
     {
         $this->authorize('update', $todo);
         

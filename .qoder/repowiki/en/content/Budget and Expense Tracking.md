@@ -3,6 +3,10 @@
 <cite>
 **Referenced Files in This Document**
 - [BudgetController.php](file://app/Http/Controllers/BudgetController.php)
+- [BudgetService.php](file://app/Services/BudgetService.php)
+- [StoreBudgetRequest.php](file://app/Http/Requests/StoreBudgetRequest.php)
+- [UpdateBudgetRequest.php](file://app/Http/Requests/UpdateBudgetRequest.php)
+- [StoreExpenseRequest.php](file://app/Http/Requests/StoreExpenseRequest.php)
 - [Budget.php](file://app/Models/Budget.php)
 - [Expense.php](file://app/Models/Expense.php)
 - [BudgetSplit.php](file://app/Models/BudgetSplit.php)
@@ -18,6 +22,14 @@
 - [2026_04_21_132801_create_itineraries_table.php](file://database/migrations/2026_04_21_132801_create_itineraries_table.php)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated BudgetController documentation to reflect new Form Request pattern with dependency injection
+- Added BudgetService documentation explaining business logic separation
+- Updated validation patterns from inline validation to structured Form Request validation
+- Enhanced controller operation documentation with new architectural components
+- Updated code examples to show dependency injection and service layer usage
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -31,10 +43,10 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the budget and expense tracking system designed for travel planning. It covers budget creation and lifecycle management, allocation and tracking of expenses, currency handling, expense categorization, group expense sharing via BudgetSplit, and the relationships among budgets, expenses, and itineraries. It also documents controller operations for budget management and expense recording, and outlines analytics and reporting capabilities surfaced in the UI.
+This document explains the budget and expense tracking system designed for travel planning. The system has undergone a complete architectural transformation from inline validation to a structured Form Request pattern, with controllers now using dependency injection and a dedicated BudgetService for business logic. It covers budget creation and lifecycle management, allocation and tracking of expenses, currency handling, expense categorization, group expense sharing via BudgetSplit, and the relationships among budgets, expenses, and itineraries.
 
 ## Project Structure
-The system centers around Laravel MVC with dedicated models, controller, policies, and Blade views for budget and expense management. Routes define the RESTful budget endpoints plus custom endpoints for adding and removing expenses.
+The system centers around Laravel MVC with dedicated models, controller, service layer, Form Request validation classes, policies, and Blade views for budget and expense management. Routes define the RESTful budget endpoints plus custom endpoints for adding and removing expenses.
 
 ```mermaid
 graph TB
@@ -43,6 +55,14 @@ RWeb["routes/web.php"]
 end
 subgraph "Controllers"
 BC["app/Http/Controllers/BudgetController.php"]
+end
+subgraph "Services"
+BS["app/Services/BudgetService.php"]
+end
+subgraph "Form Requests"
+SBR["app/Http/Requests/StoreBudgetRequest.php"]
+UBR["app/Http/Requests/UpdateBudgetRequest.php"]
+SER["app/Http/Requests/StoreExpenseRequest.php"]
 end
 subgraph "Models"
 BM["app/Models/Budget.php"]
@@ -65,6 +85,13 @@ MBSplit["database/migrations/*_create_budget_splits_table.php"]
 MItin["database/migrations/*_create_itineraries_table.php"]
 end
 RWeb --> BC
+BC --> BS
+BC --> SBR
+BC --> UBR
+BC --> SER
+BS --> BM
+BS --> EM
+BS --> BSM
 BC --> BM
 BC --> EM
 BC --> BSM
@@ -81,272 +108,276 @@ IM --> MItin
 
 **Diagram sources**
 - [web.php:35-38](file://routes/web.php#L35-L38)
-- [BudgetController.php:12-215](file://app/Http/Controllers/BudgetController.php#L12-L215)
-- [Budget.php:9-47](file://app/Models/Budget.php#L9-L47)
-- [Expense.php:9-32](file://app/Models/Expense.php#L9-L32)
-- [BudgetSplit.php:8-34](file://app/Models/BudgetSplit.php#L8-L34)
-- [Itinerary.php:9-57](file://app/Models/Itinerary.php#L9-L57)
-- [index.blade.php:1-184](file://resources/views/budgets/index.blade.php#L1-L184)
-- [create.blade.php:1-171](file://resources/views/budgets/create.blade.php#L1-L171)
-- [show.blade.php:1-216](file://resources/views/budgets/show.blade.php#L1-L216)
-- [2026_04_21_132809_create_budgets_table.php:14-29](file://database/migrations/2026_04_21_132809_create_budgets_table.php#L14-L29)
-- [2026_04_21_132811_create_expenses_table.php:14-27](file://database/migrations/2026_04_21_132811_create_expenses_table.php#L14-L27)
-- [2026_04_21_132810_create_budget_splits_table.php:14-26](file://database/migrations/2026_04_21_132810_create_budget_splits_table.php#L14-L26)
-- [2026_04_21_132801_create_itineraries_table.php:14-28](file://database/migrations/2026_04_21_132801_create_itineraries_table.php#L14-L28)
+- [BudgetController.php:15-19](file://app/Http/Controllers/BudgetController.php#L15-L19)
+- [BudgetService.php:12-42](file://app/Services/BudgetService.php#L12-L42)
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
+- [StoreExpenseRequest.php](file://app/Http/Requests/StoreExpenseRequest.php)
+- [BudgetController.php:55-64](file://app/Http/Controllers/BudgetController.php#L55-L64)
+- [BudgetController.php:88-98](file://app/Http/Controllers/BudgetController.php#L88-L98)
+- [BudgetController.php:110-118](file://app/Http/Controllers/BudgetController.php#L110-L118)
 
 **Section sources**
 - [web.php:35-38](file://routes/web.php#L35-L38)
-- [BudgetController.php:12-215](file://app/Http/Controllers/BudgetController.php#L12-L215)
-- [Budget.php:9-47](file://app/Models/Budget.php#L9-L47)
-- [Expense.php:9-32](file://app/Models/Expense.php#L9-L32)
-- [BudgetSplit.php:8-34](file://app/Models/BudgetSplit.php#L8-L34)
-- [Itinerary.php:9-57](file://app/Models/Itinerary.php#L9-L57)
-- [index.blade.php:1-184](file://resources/views/budgets/index.blade.php#L1-L184)
-- [create.blade.php:1-171](file://resources/views/budgets/create.blade.php#L1-L171)
-- [show.blade.php:1-216](file://resources/views/budgets/show.blade.php#L1-L216)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
 
 ## Core Components
-- Budget model: Tracks total budget, total spent, currency, type (solo/group), status, and links to user, itinerary, expenses, and splits.
-- Expense model: Records per-transaction details including amount, category, date, and optional receipt.
-- BudgetSplit model: Distributes group budget shares among users with share percentage, share amount, paid amount, and status.
-- Itinerary model: Connects budgets to planned trips with dates and status.
-- BudgetController: Implements CRUD for budgets, manages expense addition/removal, and aggregates analytics for display.
-- Views: Present budget lists, creation form, and detailed budget page with expense list and category breakdown.
+- **BudgetController**: Now uses dependency injection with BudgetService and Form Request classes for structured validation. Implements CRUD for budgets, manages expense addition/removal, and delegates business logic to service layer.
+- **BudgetService**: Handles all business logic including budget creation, expense management, group split creation, and statistical calculations. Provides transaction-safe operations and centralized validation handling.
+- **Form Request Classes**: Structured validation classes (StoreBudgetRequest, UpdateBudgetRequest, StoreExpenseRequest) replace inline validation patterns, providing reusable validation rules and custom error messages.
+- **Budget model**: Tracks total budget, total spent, currency, type (solo/group), status, and links to user, itinerary, expenses, and splits.
+- **Expense model**: Records per-transaction details including amount, category, date, and optional receipt.
+- **BudgetSplit model**: Distributes group budget shares among users with share percentage, share amount, paid amount, and status.
+- **Itinerary model**: Connects budgets to planned trips with dates and status.
 
-Key implementation references:
-- BudgetController index, create, store, show, edit, update, destroy, addExpense, deleteExpense
-- Budget model relations and casts
-- Expense model relations and casts
-- BudgetSplit model relations and casts
-- Itinerary model relations and casts
+**Updated** The controller now uses dependency injection and Form Request validation instead of inline validation patterns.
 
 **Section sources**
-- [BudgetController.php:14-215](file://app/Http/Controllers/BudgetController.php#L14-L215)
-- [Budget.php:11-47](file://app/Models/Budget.php#L11-L47)
-- [Expense.php:13-32](file://app/Models/Expense.php#L13-L32)
-- [BudgetSplit.php:10-34](file://app/Models/BudgetSplit.php#L10-L34)
-- [Itinerary.php:11-57](file://app/Models/Itinerary.php#L11-L57)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
 
 ## Architecture Overview
-The system follows a layered MVC pattern:
-- Routes define endpoints for budgets and custom expense actions.
-- BudgetController orchestrates authorization, validation, transactions, and view rendering.
-- Models encapsulate persistence, relationships, and casting.
-- Views render lists, forms, and analytics dashboards.
+The system follows a layered MVC pattern with clear separation of concerns:
+- **Routes** define endpoints for budgets and custom expense actions.
+- **Controllers** now use dependency injection with BudgetService and Form Request validation classes.
+- **Services** handle all business logic with transaction safety and centralized operations.
+- **Form Requests** provide structured validation with reusable rules and custom error messages.
+- **Models** encapsulate persistence, relationships, and casting.
+- **Views** render lists, forms, and analytics dashboards.
 
 ```mermaid
 sequenceDiagram
 participant U as "User"
 participant R as "routes/web.php"
 participant C as "BudgetController"
+participant S as "BudgetService"
+participant FR as "Form Request"
 participant M as "Eloquent Models"
-participant V as "Blade Views"
 U->>R : GET /budgets
 R->>C : index()
 C->>M : auth()->user()->budgets()->with(['itinerary','expenses'])
 C->>V : budgets.index
 U->>R : POST /budgets
-R->>C : store()
-C->>M : Budget : : create(validated)
+R->>C : store(StoreBudgetRequest)
+C->>FR : validate()
+C->>S : createBudget(validatedData, user)
+S->>M : Budget.create()
 alt group budget
-C->>M : BudgetSplit : : create(...) for each user
+S->>M : BudgetSplit.create() for each user
 end
 C-->>U : redirect budgets.show
 U->>R : POST /budgets/{budget}/expenses
-R->>C : addExpense()
-C->>M : Expense : : create(validated)
-C->>M : Budget.increment(total_spent)
+R->>C : addExpense(StoreExpenseRequest)
+C->>FR : validate()
+C->>S : addExpense(budget, validatedData)
+S->>M : Expense.create()
+S->>M : Budget.increment(total_spent)
 C-->>U : redirect budgets.show
 U->>R : DELETE /budgets/{budget}/expenses/{expenseId}
 R->>C : deleteExpense()
-C->>M : Budget.decrement(total_spent)
-C->>M : Expense->delete()
+C->>S : deleteExpense(budget, expense)
+S->>M : Budget.decrement(total_spent)
+S->>M : Expense.delete()
 C-->>U : redirect budgets.show
 ```
 
 **Diagram sources**
 - [web.php:35-38](file://routes/web.php#L35-L38)
-- [BudgetController.php:14-215](file://app/Http/Controllers/BudgetController.php#L14-L215)
-- [Budget.php:38-46](file://app/Models/Budget.php#L38-L46)
-- [Expense.php:28-31](file://app/Models/Expense.php#L28-L31)
-- [BudgetSplit.php:25-28](file://app/Models/BudgetSplit.php#L25-L28)
+- [BudgetController.php:55-64](file://app/Http/Controllers/BudgetController.php#L55-L64)
+- [BudgetController.php:88-98](file://app/Http/Controllers/BudgetController.php#L88-L98)
+- [BudgetController.php:110-118](file://app/Http/Controllers/BudgetController.php#L110-L118)
+- [BudgetService.php:21-42](file://app/Services/BudgetService.php#L21-L42)
+- [BudgetService.php:51-74](file://app/Services/BudgetService.php#L51-L74)
+- [BudgetService.php:83-97](file://app/Services/BudgetService.php#L83-L97)
 
 ## Detailed Component Analysis
 
-### Budget Model
-The Budget model defines fillable attributes, monetary casting, and relationships to user, itinerary, expenses, and splits. It supports solo and group budget types and tracks status and currency.
+### BudgetController with Form Request Pattern
+The controller now uses dependency injection with BudgetService and Form Request validation classes. All validation is handled through structured Form Request classes instead of inline validation patterns.
 
 ```mermaid
 classDiagram
-class Budget {
-+BigInteger id
-+BigInteger user_id
-+BigInteger itinerary_id
-+string name
-+string description
-+decimal total_budget
-+decimal total_spent
-+string currency
-+string type
-+string status
-+timestamps()
-+user() BelongsTo
-+itinerary() BelongsTo
-+expenses() HasMany
-+splits() HasMany
+class BudgetController {
++__construct(BudgetService budgetService)
++index(Request request) Response
++create() Response
++store(StoreBudgetRequest request) Response
++show(Budget budget) Response
++edit(Budget budget) Response
++update(UpdateBudgetRequest request, Budget budget) Response
++destroy(Budget budget) Response
++addExpense(StoreExpenseRequest request, Budget budget) Response
++deleteExpense(Budget budget, int expenseId) Response
 }
-class Expense {
-+BigInteger id
-+BigInteger budget_id
-+string title
-+string description
-+decimal amount
-+string category
-+date expense_date
-+string receipt
-+timestamps()
-+budget() BelongsTo
+class BudgetService {
++createBudget(array data, User user) Budget
++addExpense(Budget budget, array data) Expense
++deleteExpense(Budget budget, Expense expense) void
++calculateStats(Budget budget) array
++getExpensesByCategory(Budget budget) Collection
 }
-class BudgetSplit {
-+BigInteger id
-+BigInteger budget_id
-+BigInteger user_id
-+decimal share_percentage
-+decimal share_amount
-+decimal paid_amount
-+string status
-+timestamps()
-+budget() BelongsTo
-+user() BelongsTo
+class StoreBudgetRequest {
++authorize() bool
++rules() array
++messages() array
 }
-class Itinerary {
-+BigInteger id
-+BigInteger user_id
-+string title
-+string destination
-+date start_date
-+date end_date
-+string description
-+decimal budget_total
-+string status
-+timestamps()
-+user() BelongsTo
-+days() HasMany
-+budgets() HasMany
-+todos() HasMany
-+memories() HasMany
-+travelGroup() HasMany
+class UpdateBudgetRequest {
++authorize() bool
++rules() array
++messages() array
 }
-Budget --> Expense : "hasMany"
-Budget --> BudgetSplit : "hasMany"
-Budget --> Itinerary : "belongsTo"
-Budget --> User : "belongsTo"
-BudgetSplit --> User : "belongsTo"
+class StoreExpenseRequest {
++authorize() bool
++rules() array
++messages() array
+}
+BudgetController --> BudgetService : "uses"
+BudgetController --> StoreBudgetRequest : "injects"
+BudgetController --> UpdateBudgetRequest : "injects"
+BudgetController --> StoreExpenseRequest : "injects"
 ```
 
 **Diagram sources**
-- [Budget.php:11-47](file://app/Models/Budget.php#L11-L47)
-- [Expense.php:13-32](file://app/Models/Expense.php#L13-L32)
-- [BudgetSplit.php:10-34](file://app/Models/BudgetSplit.php#L10-L34)
-- [Itinerary.php:11-57](file://app/Models/Itinerary.php#L11-L57)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
+
+**Updated** The controller now uses dependency injection with BudgetService and Form Request validation classes instead of inline validation patterns.
 
 **Section sources**
-- [Budget.php:11-47](file://app/Models/Budget.php#L11-L47)
-- [Expense.php:13-32](file://app/Models/Expense.php#L13-L32)
-- [BudgetSplit.php:10-34](file://app/Models/BudgetSplit.php#L10-L34)
-- [Itinerary.php:11-57](file://app/Models/Itinerary.php#L11-L57)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
 
-### Expense Model
-The Expense model captures per-transaction metadata, including amount, category, date, and optional receipt. It belongs to a Budget.
-
-```mermaid
-classDiagram
-class Expense {
-+BigInteger id
-+BigInteger budget_id
-+string title
-+string description
-+decimal amount
-+string category
-+date expense_date
-+string receipt
-+timestamps()
-+budget() BelongsTo
-}
-```
-
-**Diagram sources**
-- [Expense.php:13-32](file://app/Models/Expense.php#L13-L32)
-
-**Section sources**
-- [Expense.php:13-32](file://app/Models/Expense.php#L13-L32)
-
-### BudgetSplit Functionality (Group Expense Sharing)
-Group budgets distribute costs among participants. On creation, the controller creates BudgetSplit records for each participating user with equal share percentage and share amount. The split status tracks pending/paid/settled.
+### BudgetService - Business Logic Layer
+The BudgetService handles all business logic with transaction safety and centralized operations. It provides methods for budget creation, expense management, group split creation, and statistical calculations.
 
 ```mermaid
 flowchart TD
-Start(["Create Group Budget"]) --> Validate["Validate Request"]
-Validate --> CreateBudget["Create Budget"]
-CreateBudget --> IterateUsers["Iterate split_users"]
-IterateUsers --> ComputeShare["Compute share_amount = total_budget / user_count"]
-ComputeShare --> CreateSplit["Create BudgetSplit for each user<br/>share_percentage = 100 / user_count"]
-CreateSplit --> Done(["Group Budget Ready"])
+Start(["Budget Service Operations"]) --> CreateBudget["createBudget(data, user)"]
+CreateBudget --> Validate["Validate data in Form Request"]
+Validate --> Transaction["DB::transaction()"]
+Transaction --> CreateBudgetRecord["Create Budget record"]
+CreateBudgetRecord --> CheckType{"Is group budget?"}
+CheckType --> |Yes| CreateSplits["createBudgetSplits()"]
+CheckType --> |No| ReturnBudget["Return budget"]
+CreateSplits --> CreateSplitRecords["Create BudgetSplit records"]
+CreateSplitRecords --> ReturnBudget
+ReturnBudget --> End(["Operation Complete"])
+Start --> AddExpense["addExpense(budget, data)"]
+AddExpense --> HandleReceipt["Handle receipt upload"]
+HandleReceipt --> CreateExpense["Create Expense record"]
+CreateExpense --> IncrementSpent["Increment total_spent"]
+IncrementSpent --> ReturnExpense["Return expense"]
+Start --> DeleteExpense["deleteExpense(budget, expense)"]
+DeleteExpense --> DeleteReceipt["Delete receipt file"]
+DeleteReceipt --> DecrementSpent["Decrement total_spent"]
+DecrementSpent --> DeleteExpenseRecord["Delete Expense record"]
+DeleteExpenseRecord --> End
 ```
 
 **Diagram sources**
-- [BudgetController.php:69-82](file://app/Http/Controllers/BudgetController.php#L69-L82)
-- [BudgetSplit.php:10-23](file://app/Models/BudgetSplit.php#L10-L23)
+- [BudgetService.php:21-42](file://app/Services/BudgetService.php#L21-L42)
+- [BudgetService.php:51-74](file://app/Services/BudgetService.php#L51-L74)
+- [BudgetService.php:83-97](file://app/Services/BudgetService.php#L83-L97)
+- [BudgetService.php:106-121](file://app/Services/BudgetService.php#L106-L121)
 
 **Section sources**
-- [BudgetController.php:69-82](file://app/Http/Controllers/BudgetController.php#L69-L82)
-- [BudgetSplit.php:10-23](file://app/Models/BudgetSplit.php#L10-L23)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
 
-### BudgetController Operations
-The controller implements:
-- Listing budgets with filters and pagination
-- Creating budgets with solo or group type
-- Updating budget metadata and status
-- Deleting budgets
-- Adding expenses with validation, receipt upload, and total_spent updates
-- Removing expenses and adjusting total_spent
+### Form Request Validation Classes
+Form Request classes provide structured validation with reusable rules and custom error messages. They replace inline validation patterns and offer better code organization and reusability.
+
+```mermaid
+classDiagram
+class FormRequest {
+<<abstract>>
++authorize() bool
++rules() array
++messages() array
+}
+class StoreBudgetRequest {
++authorize() bool
++rules() array
++messages() array
+}
+class UpdateBudgetRequest {
++authorize() bool
++rules() array
++messages() array
+}
+class StoreExpenseRequest {
++authorize() bool
++rules() array
++messages() array
+}
+FormRequest <|-- StoreBudgetRequest
+FormRequest <|-- UpdateBudgetRequest
+FormRequest <|-- StoreExpenseRequest
+```
+
+**Diagram sources**
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
+
+**Section sources**
+- [StoreBudgetRequest.php:8-47](file://app/Http/Requests/StoreBudgetRequest.php#L8-L47)
+- [UpdateBudgetRequest.php:8-44](file://app/Http/Requests/UpdateBudgetRequest.php#L8-L44)
+
+### BudgetController Operations with New Architecture
+The controller now implements operations with dependency injection and Form Request validation:
+
+- **Listing budgets**: Uses authorization and filtering with pagination
+- **Creating budgets**: Injects StoreBudgetRequest for validation and delegates to BudgetService
+- **Updating budgets**: Injects UpdateBudgetRequest for validation and authorization
+- **Deleting budgets**: Maintains authorization and deletion
+- **Adding expenses**: Injects StoreExpenseRequest for validation and delegates to BudgetService
+- **Removing expenses**: Maintains authorization and delegates to BudgetService
 
 ```mermaid
 sequenceDiagram
 participant U as "User"
 participant C as "BudgetController"
-participant B as "Budget"
-participant E as "Expense"
+participant S as "BudgetService"
+participant FR as "Form Request"
 U->>C : POST addExpense(budget)
-C->>C : authorize(update)
-C->>C : validate(request)
-C->>B : increment total_spent
-C->>E : create(validated)
+C->>FR : validate()
+C->>S : addExpense(budget, validated)
+S->>S : handle receipt upload
+S->>S : create expense record
+S->>S : increment total_spent
 C-->>U : redirect show
 U->>C : DELETE deleteExpense(budget, expenseId)
-C->>C : authorize(update)
-C->>E : findOrFail(expenseId)
-C->>B : decrement total_spent
-C->>E : delete()
+C->>S : deleteExpense(budget, expense)
+S->>S : delete receipt file
+S->>S : decrement total_spent
+S->>S : delete expense
 C-->>U : redirect show
 ```
 
 **Diagram sources**
-- [BudgetController.php:153-213](file://app/Http/Controllers/BudgetController.php#L153-L213)
-- [Budget.php:38-41](file://app/Models/Budget.php#L38-L41)
-- [Expense.php:28-31](file://app/Models/Expense.php#L28-L31)
+- [BudgetController.php:110-118](file://app/Http/Controllers/BudgetController.php#L110-L118)
+- [BudgetController.php:121-131](file://app/Http/Controllers/BudgetController.php#L121-L131)
+- [BudgetService.php:51-74](file://app/Services/BudgetService.php#L51-L74)
+- [BudgetService.php:83-97](file://app/Services/BudgetService.php#L83-L97)
+
+**Updated** All operations now use Form Request validation and BudgetService delegation instead of inline validation patterns.
 
 **Section sources**
-- [BudgetController.php:14-215](file://app/Http/Controllers/BudgetController.php#L14-L215)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
 
 ### Views and Analytics
-- Budget index displays summary cards and filter controls for itinerary and type.
-- Budget show presents:
-  - Stats overview (total budget, total spent, remaining, percentage used)
-  - Spending progress bar
-  - Expense list with add/delete actions
-  - Category breakdown of expenses
-- Budget create allows selecting budget type, currency, linking to an itinerary, and optionally splitting with users.
+- **Budget index**: Displays summary cards and filter controls for itinerary and type
+- **Budget show**: Presents stats overview, spending progress bar, expense list with add/delete actions, and category breakdown
+- **Budget create**: Allows selecting budget type, currency, linking to an itinerary, and optionally splitting with users
 
 ```mermaid
 flowchart TD
@@ -375,18 +406,24 @@ CreatePage --> GroupSplits["Optional Group Splits"]
 - [create.blade.php:66-134](file://resources/views/budgets/create.blade.php#L66-L134)
 
 ## Dependency Analysis
-- Authorization: BudgetPolicy restricts view/update/delete to the budget owner.
-- Routing: Resource routes plus two custom endpoints for expense operations.
-- Data integrity: Foreign keys enforce ownership and parent-child relationships; indexes optimize queries.
-- Transactions: Controller wraps budget creation and expense add/remove in database transactions.
+- **Authorization**: BudgetPolicy restricts view/update/delete to the budget owner
+- **Routing**: Resource routes plus two custom endpoints for expense operations
+- **Data integrity**: Foreign keys enforce ownership and parent-child relationships; indexes optimize queries
+- **Transaction safety**: BudgetService wraps critical operations in database transactions
+- **Validation**: Form Request classes provide structured validation with reusable rules
 
 ```mermaid
 graph LR
 Policy["BudgetPolicy"] --> Controller["BudgetController"]
 Routes["routes/web.php"] --> Controller
-Controller --> BudgetModel["Budget"]
-Controller --> ExpenseModel["Expense"]
-Controller --> BudgetSplitModel["BudgetSplit"]
+Controller --> Service["BudgetService"]
+Controller --> FormRequests["Form Request Classes"]
+Service --> BudgetModel["Budget"]
+Service --> ExpenseModel["Expense"]
+Service --> BudgetSplitModel["BudgetSplit"]
+Controller --> BudgetModel
+Controller --> ExpenseModel
+Controller --> BudgetSplitModel
 BudgetModel --> ItineraryModel["Itinerary"]
 BudgetModel --> ExpenseModel
 BudgetModel --> BudgetSplitModel
@@ -395,44 +432,43 @@ BudgetModel --> BudgetSplitModel
 **Diagram sources**
 - [BudgetPolicy.php:21-47](file://app/Policies/BudgetPolicy.php#L21-L47)
 - [web.php:35-38](file://routes/web.php#L35-L38)
-- [BudgetController.php:14-215](file://app/Http/Controllers/BudgetController.php#L14-L215)
-- [Budget.php:28-46](file://app/Models/Budget.php#L28-L46)
-- [Expense.php:28-31](file://app/Models/Expense.php#L28-L31)
-- [BudgetSplit.php:25-33](file://app/Models/BudgetSplit.php#L25-L33)
-- [Itinerary.php:28-41](file://app/Models/Itinerary.php#L28-L41)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
+
+**Updated** The dependency graph now includes BudgetService and Form Request classes as central components.
 
 **Section sources**
 - [BudgetPolicy.php:21-47](file://app/Policies/BudgetPolicy.php#L21-L47)
 - [web.php:35-38](file://routes/web.php#L35-L38)
-- [BudgetController.php:14-215](file://app/Http/Controllers/BudgetController.php#L14-L215)
-- [Budget.php:28-46](file://app/Models/Budget.php#L28-L46)
-- [Expense.php:28-31](file://app/Models/Expense.php#L28-L31)
-- [BudgetSplit.php:25-33](file://app/Models/BudgetSplit.php#L25-L33)
-- [Itinerary.php:28-41](file://app/Models/Itinerary.php#L28-L41)
+- [BudgetController.php:15-133](file://app/Http/Controllers/BudgetController.php#L15-L133)
+- [BudgetService.php:12-159](file://app/Services/BudgetService.php#L12-L159)
 
 ## Performance Considerations
-- Use database indexes on frequently filtered columns (user_id, status, type, itinerary_id) to speed up queries.
-- Paginate budget listings to avoid loading large datasets.
-- Aggregate totals (sums) in SQL rather than PHP where possible to reduce memory usage.
-- Store receipts efficiently and consider offloading to cloud storage for scalability.
-- Batch operations for group splits to minimize round-trips.
+- **Database optimization**: Use database indexes on frequently filtered columns (user_id, status, type, itinerary_id) to speed up queries
+- **Pagination**: Paginate budget listings to avoid loading large datasets
+- **Aggregation**: Aggregate totals (sums) in SQL rather than PHP where possible to reduce memory usage
+- **File storage**: Store receipts efficiently and consider offloading to cloud storage for scalability
+- **Batch operations**: Batch operations for group splits to minimize round-trips
+- **Transaction efficiency**: BudgetService uses database transactions to ensure data consistency
 
 ## Troubleshooting Guide
-Common issues and resolutions:
-- Validation errors during budget creation: Ensure required fields (name, total_budget, currency, type) are provided and formatted correctly.
-- Group split creation failures: Verify split_users array is present and contains valid user IDs.
-- Expense upload failures: Confirm file size and MIME type constraints are met.
-- Transaction rollbacks: Wrap critical operations in transactions to maintain data consistency.
-- Authorization failures: Confirm the current user owns the budget being accessed.
+Common issues and resolutions with the new architecture:
+- **Form Request validation failures**: Check Form Request classes for proper validation rules and custom error messages
+- **Service layer errors**: Verify BudgetService methods are called with proper parameters and transaction boundaries
+- **Dependency injection issues**: Ensure BudgetController constructor properly injects BudgetService
+- **Authorization failures**: Confirm the current user owns the budget being accessed
+- **Transaction rollbacks**: BudgetService wraps critical operations in transactions to maintain data consistency
+
+**Updated** Added troubleshooting guidance for Form Request validation and service layer integration.
 
 **Section sources**
-- [BudgetController.php:51-58](file://app/Http/Controllers/BudgetController.php#L51-L58)
-- [BudgetController.php:157-164](file://app/Http/Controllers/BudgetController.php#L157-L164)
-- [BudgetController.php:88-91](file://app/Http/Controllers/BudgetController.php#L88-L91)
-- [BudgetController.php:187-190](file://app/Http/Controllers/BudgetController.php#L187-L190)
+- [BudgetController.php:55-64](file://app/Http/Controllers/BudgetController.php#L55-L64)
+- [BudgetController.php:88-98](file://app/Http/Controllers/BudgetController.php#L88-L98)
+- [BudgetController.php:110-118](file://app/Http/Controllers/BudgetController.php#L110-L118)
+- [BudgetService.php:21-42](file://app/Services/BudgetService.php#L21-L42)
 
 ## Conclusion
-The budget and expense tracking system provides a robust foundation for managing travel finances. It supports solo and group budgets, tracks spending with categories and receipts, and integrates with itineraries. The controller enforces authorization, maintains financial totals, and exposes analytics through the UI. Extending the system could include budget alerts, advanced reporting, and reconciliation features.
+The budget and expense tracking system provides a robust foundation for managing travel finances with a modern, architecturally sound design. The transformation to Form Request pattern with dependency injection and service layer separation offers improved maintainability, testability, and code organization. It supports solo and group budgets, tracks spending with categories and receipts, integrates with itineraries, and provides comprehensive analytics through the UI. The new architecture enables easier extension with budget alerts, advanced reporting, and reconciliation features.
 
 ## Appendices
 
@@ -497,9 +533,13 @@ ITINERARIES ||--o{ BUDGETS : "hosts"
 - [2026_04_21_132801_create_itineraries_table.php:14-28](file://database/migrations/2026_04_21_132801_create_itineraries_table.php#L14-L28)
 
 ### Common Budgeting Scenarios and Best Practices
-- Solo trip budget: Set a fixed total budget and track expenses by category to stay within limits.
-- Group trip budget: Create a group budget and split costs equally; reconcile paid amounts later.
-- Linked to itinerary: Associate budgets with itineraries to track trip-specific spending.
-- Receipt management: Upload receipts to support expense verification and reporting.
-- Currency awareness: Choose appropriate currency for the destination to simplify conversions.
-- Regular reviews: Use the category breakdown and progress bar to monitor spending trends and adjust plans.
+- **Solo trip budget**: Set a fixed total budget and track expenses by category to stay within limits
+- **Group trip budget**: Create a group budget with Form Request validation ensuring proper split distribution; reconcile paid amounts later
+- **Linked to itinerary**: Associate budgets with itineraries to track trip-specific spending
+- **Receipt management**: Upload receipts to support expense verification and reporting
+- **Currency awareness**: Choose appropriate currency for the destination to simplify conversions
+- **Regular reviews**: Use the category breakdown and progress bar to monitor spending trends and adjust plans
+- **Validation best practices**: Leverage Form Request classes for consistent validation across the application
+- **Service layer benefits**: Utilize BudgetService for transaction-safe operations and centralized business logic
+
+**Updated** Added guidance on leveraging Form Request validation and service layer benefits for better budget management practices.
