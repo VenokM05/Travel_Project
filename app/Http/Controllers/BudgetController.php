@@ -6,14 +6,17 @@ use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Budget;
-use App\Models\BudgetSplit;
 use App\Models\Itinerary;
 use App\Models\User;
+use App\Services\BudgetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BudgetController extends Controller
 {
+    public function __construct(protected BudgetService $budgetService)
+    {
+    }
     public function index(Request $request)
     {
         $query = auth()->user()->budgets()->with(['itinerary', 'expenses']);
@@ -51,40 +54,13 @@ class BudgetController extends Controller
 
     public function store(StoreBudgetRequest $request)
     {
-        $validated = $request->validated();
+        $budget = $this->budgetService->createBudget(
+            $request->validated(),
+            auth()->user()
+        );
 
-        $validated['user_id'] = auth()->id();
-        $validated['total_spent'] = 0;
-        $validated['status'] = 'active';
-
-        DB::beginTransaction();
-        try {
-            $budget = Budget::create($validated);
-
-            // Create splits for group budget
-            if ($validated['type'] === 'group' && $request->filled('split_users')) {
-                $splitUsers = is_array($request->split_users) ? $request->split_users : json_decode($request->split_users, true);
-                $splitAmount = $validated['total_budget'] / count($splitUsers);
-                
-                foreach ($splitUsers as $userId) {
-                    BudgetSplit::create([
-                        'budget_id' => $budget->id,
-                        'user_id' => $userId,
-                        'share_percentage' => 100 / count($splitUsers),
-                        'share_amount' => $splitAmount,
-                        'paid_amount' => 0,
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            return redirect()->route('budgets.show', $budget)
-                ->with('success', 'Budget created successfully!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to create budget. Please try again.']);
-        }
+        return redirect()->route('budgets.show', $budget)
+            ->with('success', 'Budget created successfully!');
     }
 
     public function show(Budget $budget)
@@ -93,20 +69,11 @@ class BudgetController extends Controller
         
         $budget->load(['expenses', 'splits.user', 'itinerary']);
         
-        // Calculate statistics
-        $stats = [
-            'total_budget' => $budget->total_budget,
-            'total_spent' => $budget->total_spent,
-            'remaining' => $budget->total_budget - $budget->total_spent,
-            'percentage_used' => $budget->total_budget > 0 ? ($budget->total_spent / $budget->total_budget) * 100 : 0,
-            'expense_count' => $budget->expenses()->count(),
-        ];
+        // Calculate statistics using service
+        $stats = $this->budgetService->calculateStats($budget);
         
         // Expenses by category
-        $expensesByCategory = $budget->expenses()
-            ->select('category', DB::raw('SUM(amount) as total'))
-            ->groupBy('category')
-            ->get();
+        $expensesByCategory = $this->budgetService->getExpensesByCategory($budget);
         
         return view('budgets.show', compact('budget', 'stats', 'expensesByCategory'));
     }
@@ -144,33 +111,10 @@ class BudgetController extends Controller
     {
         $this->authorize('update', $budget);
         
-        $validated = $request->validated();
+        $this->budgetService->addExpense($budget, $request->validated());
 
-        DB::beginTransaction();
-        try {
-            // Handle receipt upload
-            $receiptPath = null;
-            if ($request->hasFile('receipt')) {
-                $receiptPath = $request->file('receipt')->store('receipts', 'public');
-            }
-
-            $validated['budget_id'] = $budget->id;
-            $validated['expense_date'] = $validated['expense_date'] ?? now();
-            $validated['receipt'] = $receiptPath;
-
-            $expense = $budget->expenses()->create($validated);
-
-            // Update budget total spent
-            $budget->increment('total_spent', $validated['amount']);
-
-            DB::commit();
-
-            return redirect()->route('budgets.show', $budget)
-                ->with('success', 'Expense added successfully!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to add expense. Please try again.']);
-        }
+        return redirect()->route('budgets.show', $budget)
+            ->with('success', 'Expense added successfully!');
     }
 
     // Delete expense
@@ -180,18 +124,9 @@ class BudgetController extends Controller
         
         $expense = $budget->expenses()->findOrFail($expenseId);
         
-        DB::beginTransaction();
-        try {
-            $budget->decrement('total_spent', $expense->amount);
-            $expense->delete();
-            
-            DB::commit();
+        $this->budgetService->deleteExpense($budget, $expense);
 
-            return redirect()->route('budgets.show', $budget)
-                ->with('success', 'Expense deleted successfully!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to delete expense. Please try again.']);
-        }
+        return redirect()->route('budgets.show', $budget)
+            ->with('success', 'Expense deleted successfully!');
     }
 }

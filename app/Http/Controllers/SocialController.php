@@ -8,24 +8,22 @@ use App\Models\Post;
 use App\Models\Story;
 use App\Models\Comment;
 use App\Models\Like;
+use App\Models\Reel;
+use App\Services\SocialService;
 use Illuminate\Http\Request;
 
 class SocialController extends Controller
 {
+    public function __construct(protected SocialService $socialService)
+    {
+    }
     /**
      * Display the community wall
      */
     public function wall()
     {
-        $posts = Post::with(['user', 'comments.user', 'likes'])
-            ->where('privacy', 'public')
-            ->latest()
-            ->paginate(10);
-
-        $stories = Story::where('expires_at', '>', now())
-            ->with('user')
-            ->latest()
-            ->get();
+        $posts = $this->socialService->getWallPosts(10);
+        $stories = $this->socialService->getActiveStories();
 
         return view('social.wall', compact('posts', 'stories'));
     }
@@ -35,14 +33,10 @@ class SocialController extends Controller
      */
     public function storePost(StorePostRequest $request)
     {
-        $validated = $request->validated();
-
-        $validated['user_id'] = auth()->id();
-        $validated['privacy'] = $validated['privacy'] ?? auth()->user()->default_post_privacy ?? 'public';
-        $validated['likes_count'] = 0;
-        $validated['comments_count'] = 0;
-
-        $post = Post::create($validated);
+        $this->socialService->createPost(
+            $request->validated(),
+            auth()->user()
+        );
 
         return redirect()->route('social.wall')
             ->with('success', 'Post published!');
@@ -53,30 +47,10 @@ class SocialController extends Controller
      */
     public function likePost(Post $post)
     {
-        $user = auth()->user();
-        $existingLike = Like::where('user_id', $user->id)
-            ->where('post_id', $post->id)
-            ->first();
-
-        if ($existingLike) {
-            $existingLike->delete();
-            $post->decrement('likes_count');
-            $liked = false;
-        } else {
-            Like::create([
-                'user_id' => $user->id,
-                'post_id' => $post->id,
-            ]);
-            $post->increment('likes_count');
-            $liked = true;
-        }
+        $result = $this->socialService->toggleLike($post, auth()->user());
 
         if (request()->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'liked' => $liked,
-                'likes_count' => $post->likes_count,
-            ]);
+            return response()->json($result);
         }
 
         return back();
@@ -87,16 +61,11 @@ class SocialController extends Controller
      */
     public function commentPost(StoreCommentRequest $request, Post $post)
     {
-        $validated = $request->validated();
-
-        $comment = Comment::create([
-            'user_id' => auth()->id(),
-            'post_id' => $post->id,
-            'content' => $validated['content'],
-            'parent_id' => $validated['parent_id'] ?? null,
-        ]);
-
-        $post->increment('comments_count');
+        $comment = $this->socialService->addComment(
+            $post,
+            auth()->user(),
+            $request->validated()
+        );
 
         if (request()->wantsJson()) {
             return response()->json([
@@ -115,7 +84,7 @@ class SocialController extends Controller
     {
         $this->authorize('delete', $post);
 
-        $post->delete();
+        $this->socialService->deletePost($post);
 
         return redirect()->route('social.wall')
             ->with('success', 'Post deleted');
@@ -126,10 +95,7 @@ class SocialController extends Controller
      */
     public function stories()
     {
-        $stories = Story::where('expires_at', '>', now())
-            ->with('user')
-            ->latest()
-            ->get();
+        $stories = $this->socialService->getActiveStories();
 
         return view('social.stories', compact('stories'));
     }
@@ -145,11 +111,7 @@ class SocialController extends Controller
             'caption' => 'nullable|string|max:500',
         ]);
 
-        $validated['user_id'] = auth()->id();
-        $validated['expires_at'] = now()->addHours(24);
-        $validated['views'] = [];
-
-        Story::create($validated);
+        $this->socialService->createStory($validated, auth()->user());
 
         return back()->with('success', 'Story posted!');
     }
@@ -159,7 +121,7 @@ class SocialController extends Controller
      */
     public function reels()
     {
-        $reels = \App\Models\Reel::with(['user', 'likes', 'comments'])
+        $reels = Reel::with(['user', 'likes', 'comments'])
             ->latest()
             ->take(20)
             ->get();
