@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreBudgetRequest;
+use App\Http\Requests\UpdateBudgetRequest;
+use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Budget;
 use App\Models\BudgetSplit;
 use App\Models\Itinerary;
@@ -46,16 +49,9 @@ class BudgetController extends Controller
         return view('budgets.create', compact('itineraries', 'users'));
     }
 
-    public function store(Request $request)
+    public function store(StoreBudgetRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'total_budget' => 'required|numeric|min:0',
-            'currency' => 'required|string|max:3',
-            'type' => 'required|in:solo,group',
-            'itinerary_id' => 'nullable|exists:itineraries,id',
-        ]);
+        $validated = $request->validated();
 
         $validated['user_id'] = auth()->id();
         $validated['total_spent'] = 0;
@@ -122,17 +118,11 @@ class BudgetController extends Controller
         return view('budgets.edit', compact('budget', 'itineraries'));
     }
 
-    public function update(Request $request, Budget $budget)
+    public function update(UpdateBudgetRequest $request, Budget $budget)
     {
         $this->authorize('update', $budget);
         
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'total_budget' => 'required|numeric|min:0',
-            'currency' => 'required|string|max:3',
-            'status' => 'required|in:active,completed,archived',
-        ]);
+        $validated = $request->validated();
 
         $budget->update($validated);
 
@@ -150,18 +140,11 @@ class BudgetController extends Controller
     }
 
     // Add expense
-    public function addExpense(Request $request, Budget $budget)
+    public function addExpense(StoreExpenseRequest $request, Budget $budget)
     {
         $this->authorize('update', $budget);
         
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
-            'category' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'expense_date' => 'nullable|date',
-            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
+        $validated = $request->validated();
 
         DB::beginTransaction();
         try {

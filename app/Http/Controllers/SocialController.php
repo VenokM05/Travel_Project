@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePostRequest;
+use App\Http\Requests\StoreCommentRequest;
 use App\Models\Post;
 use App\Models\Story;
 use App\Models\Comment;
@@ -31,17 +33,9 @@ class SocialController extends Controller
     /**
      * Store a new post
      */
-    public function storePost(Request $request)
+    public function storePost(StorePostRequest $request)
     {
-        $validated = $request->validate([
-            'content' => 'required|string|max:2000',
-            'media_urls' => 'nullable|array',
-            'media_urls.*' => 'url',
-            'location' => 'nullable|string|max:255',
-            'tags' => 'nullable|array',
-            'tags.*' => 'string|max:50',
-            'privacy' => 'nullable|in:public,followers,private',
-        ]);
+        $validated = $request->validated();
 
         $validated['user_id'] = auth()->id();
         $validated['privacy'] = $validated['privacy'] ?? auth()->user()->default_post_privacy ?? 'public';
@@ -91,12 +85,9 @@ class SocialController extends Controller
     /**
      * Add comment to a post
      */
-    public function commentPost(Request $request, Post $post)
+    public function commentPost(StoreCommentRequest $request, Post $post)
     {
-        $validated = $request->validate([
-            'content' => 'required|string|max:1000',
-            'parent_id' => 'nullable|exists:comments,id',
-        ]);
+        $validated = $request->validated();
 
         $comment = Comment::create([
             'user_id' => auth()->id(),

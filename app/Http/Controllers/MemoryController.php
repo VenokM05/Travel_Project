@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreMemoryRequest;
+use App\Http\Requests\UpdateMemoryRequest;
 use App\Models\Memory;
 use App\Models\Itinerary;
 use Illuminate\Http\Request;
@@ -20,17 +22,9 @@ class MemoryController extends Controller
         return view('memories.create', compact('itineraries'));
     }
 
-    public function store(Request $request)
+    public function store(StoreMemoryRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'location' => 'nullable|string|max:255',
-            'date' => 'required|date',
-            'media_urls' => 'nullable|string', // JSON string from hidden field
-            'itinerary_id' => 'nullable|exists:itineraries,id',
-            'mood' => 'nullable|string|max:50',
-        ]);
+        $validated = $request->validated();
 
         // Decode media_urls JSON string to array
         if ($validated['media_urls']) {
@@ -65,20 +59,11 @@ class MemoryController extends Controller
         return view('memories.edit', compact('memory', 'itineraries'));
     }
 
-    public function update(Request $request, Memory $memory)
+    public function update(UpdateMemoryRequest $request, Memory $memory)
     {
         $this->authorize('update', $memory);
         
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'location' => 'nullable|string|max:255',
-            'date' => 'required|date',
-            'media_urls' => 'nullable|array',
-            'media_urls.*' => 'url',
-            'itinerary_id' => 'nullable|exists:itineraries,id',
-            'mood' => 'nullable|string|max:50',
-        ]);
+        $validated = $request->validated();
 
         $memory->update($validated);
 

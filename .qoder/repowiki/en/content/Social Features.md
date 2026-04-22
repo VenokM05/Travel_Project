@@ -2,7 +2,10 @@
 
 <cite>
 **Referenced Files in This Document**
+- [web.php](file://routes/web.php)
 - [SocialController.php](file://app/Http/Controllers/SocialController.php)
+- [StorePostRequest.php](file://app/Http/Requests/StorePostRequest.php)
+- [StoreCommentRequest.php](file://app/Http/Requests/StoreCommentRequest.php)
 - [Post.php](file://app/Models/Post.php)
 - [Story.php](file://app/Models/Story.php)
 - [Reel.php](file://app/Models/Reel.php)
@@ -18,7 +21,17 @@
 - [2026_04_21_132820_create_comments_table.php](file://database/migrations/2026_04_21_132820_create_comments_table.php)
 - [2026_04_21_132821_create_likes_table.php](file://database/migrations/2026_04_21_132821_create_likes_table.php)
 - [wall.blade.php](file://resources/views/social/wall.blade.php)
+- [stories.blade.php](file://resources/views/social/stories.blade.php)
+- [reels.blade.php](file://resources/views/social/reels.blade.php)
 </cite>
+
+## Update Summary
+**Changes Made**
+- Updated routing configuration to reflect comprehensive social endpoints
+- Added documentation for POST endpoints for post creation, story posting, likes, comments, and post deletion
+- Updated authentication requirements to reflect that social endpoints are accessible without authentication
+- Enhanced RESTful interface documentation with new controller methods
+- Updated architecture diagrams to show expanded social feature endpoints
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -35,13 +48,16 @@
 ## Introduction
 This document describes the social features system designed to drive community engagement and content sharing. It covers the community wall and feed, post creation and management, story sharing with 24-hour expiration, and reel video content. It also explains the comment and like systems with real-time interaction capabilities, the Post, Story, and Reel models including media handling and privacy controls, and how social content relates to user profiles, itineraries, and memories. Content discovery, trending features, and social graph management are addressed along with practical interaction scenarios and community-building strategies.
 
+**Updated** The social features system now includes comprehensive routing configuration with RESTful endpoints for all social operations, accessible without authentication requirements for public social features.
+
 ## Project Structure
 The social system spans controllers, models, migrations, policies, and Blade views:
 - Controller: SocialController orchestrates community wall, post/story/reel operations, and social interactions.
 - Models: Post, Story, Reel, Comment, Like define data structures and relationships.
 - Migrations: Define database schema for posts, stories, reels, comments, and likes.
 - Policies: Enforce authorization for post/comment/like deletion.
-- Views: wall.blade.php renders the community wall UI.
+- Views: wall.blade.php, stories.blade.php, and reels.blade.php render social UI components.
+- Routes: Comprehensive RESTful endpoints for social operations.
 
 ```mermaid
 graph TB
@@ -58,7 +74,7 @@ U --> L
 ```
 
 **Diagram sources**
-- [SocialController.php:11-179](file://app/Http/Controllers/SocialController.php#L11-L179)
+- [SocialController.php:13-170](file://app/Http/Controllers/SocialController.php#L13-L170)
 - [Post.php:9-44](file://app/Models/Post.php#L9-L44)
 - [Story.php:8-34](file://app/Models/Story.php#L8-L34)
 - [Reel.php:9-45](file://app/Models/Reel.php#L9-L45)
@@ -67,7 +83,7 @@ U --> L
 - [User.php:11-172](file://app/Models/User.php#L11-L172)
 
 **Section sources**
-- [SocialController.php:11-179](file://app/Http/Controllers/SocialController.php#L11-L179)
+- [SocialController.php:13-170](file://app/Http/Controllers/SocialController.php#L13-L170)
 - [Post.php:9-44](file://app/Models/Post.php#L9-L44)
 - [Story.php:8-34](file://app/Models/Story.php#L8-L34)
 - [Reel.php:9-45](file://app/Models/Reel.php#L9-L45)
@@ -76,57 +92,58 @@ U --> L
 - [User.php:11-172](file://app/Models/User.php#L11-L172)
 
 ## Core Components
-- Community Wall and Feed
+- **Community Wall and Feed**
   - Public posts are fetched with associated user, comments, and likes, paginated for performance.
   - Stories are fetched with active expiration checks and user context.
-- Post Creation and Management
+- **Post Creation and Management**
   - Validation ensures content, optional media URLs, location, tags, and privacy are set.
-  - Defaults to user’s configured privacy if not provided.
+  - Defaults to user's configured privacy if not provided.
   - Supports authorized deletion via policy.
-- Story Sharing
+- **Story Sharing**
   - 24-hour expiration is enforced via expires_at timestamp.
   - Supports image or video media types with captions.
-- Reel Video Content
+- **Reel Video Content**
   - Stores video URL, thumbnail, caption, tags, counts, duration, and views.
-- Comments and Likes
+- **Comments and Likes**
   - Nested comments supported via parent_id.
   - Like toggling updates counters and returns JSON for AJAX-friendly UX.
-- Privacy Controls
+- **Privacy Controls**
   - Post privacy supports public, friends, private; defaults applied from user preferences.
-- Content Moderation Hooks
+- **Content Moderation Hooks**
   - Authorization policies govern who can delete posts, comments, and likes.
+- **RESTful API Endpoints**
+  - Comprehensive routing for social operations including POST endpoints for creation and interactions.
+
+**Updated** The social system now provides RESTful endpoints for all major operations with comprehensive validation and error handling.
 
 **Section sources**
-- [SocialController.php:16-29](file://app/Http/Controllers/SocialController.php#L16-L29)
-- [SocialController.php:34-55](file://app/Http/Controllers/SocialController.php#L34-L55)
-- [SocialController.php:60-89](file://app/Http/Controllers/SocialController.php#L60-L89)
-- [SocialController.php:94-118](file://app/Http/Controllers/SocialController.php#L94-L118)
-- [SocialController.php:123-131](file://app/Http/Controllers/SocialController.php#L123-L131)
-- [SocialController.php:136-144](file://app/Http/Controllers/SocialController.php#L136-L144)
-- [SocialController.php:149-164](file://app/Http/Controllers/SocialController.php#L149-L164)
-- [SocialController.php:169-177](file://app/Http/Controllers/SocialController.php#L169-L177)
-- [Post.php:11-27](file://app/Models/Post.php#L11-L27)
-- [Story.php:10-22](file://app/Models/Story.php#L10-L22)
-- [Reel.php:11-28](file://app/Models/Reel.php#L11-L28)
-- [PostPolicy.php:13-24](file://app/Policies/PostPolicy.php#L13-L24)
-- [CommentPolicy.php:13-16](file://app/Policies/CommentPolicy.php#L13-L16)
-- [LikePolicy.php:13-16](file://app/Policies/LikePolicy.php#L13-L16)
+- [web.php:47-57](file://routes/web.php#L47-L57)
+- [SocialController.php:18-31](file://app/Http/Controllers/SocialController.php#L18-L31)
+- [SocialController.php:36-49](file://app/Http/Controllers/SocialController.php#L36-L49)
+- [SocialController.php:54-83](file://app/Http/Controllers/SocialController.php#L54-L83)
+- [SocialController.php:88-109](file://app/Http/Controllers/SocialController.php#L88-L109)
+- [SocialController.php:114-122](file://app/Http/Controllers/SocialController.php#L114-L122)
+- [SocialController.php:140-155](file://app/Http/Controllers/SocialController.php#L140-L155)
+- [SocialController.php:160-168](file://app/Http/Controllers/SocialController.php#L160-L168)
 
 ## Architecture Overview
-The social system follows a layered MVC pattern:
+The social system follows a layered MVC pattern with comprehensive routing:
 - Controller actions handle requests, validate input, enforce authorization, and orchestrate model operations.
 - Models encapsulate relationships, casting, and helper methods.
 - Migrations define schema and indexes for performance.
 - Views render UI for community wall, stories, and reels.
+- Routes provide RESTful endpoints for all social operations.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
+participant Router as "Route : : prefix('social')"
 participant Controller as "SocialController"
 participant PostModel as "Post"
 participant UserModel as "User"
 participant DB as "Database"
-Client->>Controller : GET /social/wall
+Client->>Router : GET /social/wall
+Router->>Controller : wall()
 Controller->>PostModel : with(['user','comments.user','likes'])<br/>where privacy='public'<br/>latest() paginate(10)
 PostModel->>DB : SELECT posts with joins and indexes
 DB-->>PostModel : Paginated posts
@@ -135,12 +152,16 @@ Controller-->>Client : Render wall.blade.php with posts and stories
 Note over Client,Controller : Real-time interactions handled via AJAX-like JSON responses
 ```
 
+**Updated** The routing configuration now provides comprehensive RESTful endpoints for all social operations under the `/social` prefix.
+
 **Diagram sources**
-- [SocialController.php:16-29](file://app/Http/Controllers/SocialController.php#L16-L29)
+- [web.php:47-57](file://routes/web.php#L47-L57)
+- [SocialController.php:18-31](file://app/Http/Controllers/SocialController.php#L18-L31)
 - [wall.blade.php:1-204](file://resources/views/social/wall.blade.php#L1-L204)
 
 **Section sources**
-- [SocialController.php:16-29](file://app/Http/Controllers/SocialController.php#L16-L29)
+- [web.php:47-57](file://routes/web.php#L47-L57)
+- [SocialController.php:18-31](file://app/Http/Controllers/SocialController.php#L18-L31)
 - [wall.blade.php:1-204](file://resources/views/social/wall.blade.php#L1-L204)
 
 ## Detailed Component Analysis
@@ -155,18 +176,21 @@ Key responsibilities:
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
+participant Router as "Route : : prefix('social')"
 participant Controller as "SocialController"
 participant PostModel as "Post"
 participant LikeModel as "Like"
 participant UserModel as "User"
 participant DB as "Database"
-Client->>Controller : POST /social/posts
+Client->>Router : POST /social/wall
+Router->>Controller : storePost()
 Controller->>Controller : validate content, media_urls, location, tags, privacy
 Controller->>PostModel : create(validated)
 PostModel->>DB : INSERT posts
 DB-->>PostModel : new post
 Controller-->>Client : redirect to social.wall with success
-Client->>Controller : POST /social/posts/{post}/like
+Client->>Router : POST /social/posts/{post}/like
+Router->>Controller : likePost(post)
 Controller->>LikeModel : find existing like by user/post
 alt exists
 Controller->>LikeModel : delete
@@ -178,15 +202,21 @@ end
 Controller-->>Client : JSON { liked, likes_count } or back()
 ```
 
+**Updated** The SocialController now handles comprehensive RESTful operations with proper validation and authorization.
+
 **Diagram sources**
-- [SocialController.php:34-55](file://app/Http/Controllers/SocialController.php#L34-L55)
-- [SocialController.php:60-89](file://app/Http/Controllers/SocialController.php#L60-L89)
+- [web.php:47-57](file://routes/web.php#L47-L57)
+- [SocialController.php:36-49](file://app/Http/Controllers/SocialController.php#L36-L49)
+- [SocialController.php:54-83](file://app/Http/Controllers/SocialController.php#L54-L83)
 
 **Section sources**
-- [SocialController.php:34-55](file://app/Http/Controllers/SocialController.php#L34-L55)
-- [SocialController.php:60-89](file://app/Http/Controllers/SocialController.php#L60-L89)
-- [SocialController.php:94-118](file://app/Http/Controllers/SocialController.php#L94-L118)
-- [SocialController.php:123-131](file://app/Http/Controllers/SocialController.php#L123-L131)
+- [web.php:47-57](file://routes/web.php#L47-L57)
+- [SocialController.php:36-49](file://app/Http/Controllers/SocialController.php#L36-L49)
+- [SocialController.php:54-83](file://app/Http/Controllers/SocialController.php#L54-L83)
+- [SocialController.php:88-109](file://app/Http/Controllers/SocialController.php#L88-L109)
+- [SocialController.php:114-122](file://app/Http/Controllers/SocialController.php#L114-L122)
+- [SocialController.php:140-155](file://app/Http/Controllers/SocialController.php#L140-L155)
+- [SocialController.php:160-168](file://app/Http/Controllers/SocialController.php#L160-L168)
 
 ### Post Model
 Responsibilities:
@@ -528,21 +558,42 @@ CreatePost --> RefreshFeed["Refresh feed"]
 
 **Diagram sources**
 - [wall.blade.php:1-204](file://resources/views/social/wall.blade.php#L1-L204)
-- [SocialController.php:60-89](file://app/Http/Controllers/SocialController.php#L60-L89)
-- [SocialController.php:94-118](file://app/Http/Controllers/SocialController.php#L94-L118)
-- [SocialController.php:34-55](file://app/Http/Controllers/SocialController.php#L34-L55)
+- [SocialController.php:54-83](file://app/Http/Controllers/SocialController.php#L54-L83)
+- [SocialController.php:88-109](file://app/Http/Controllers/SocialController.php#L88-L109)
+- [SocialController.php:36-49](file://app/Http/Controllers/SocialController.php#L36-L49)
 
 **Section sources**
 - [wall.blade.php:1-204](file://resources/views/social/wall.blade.php#L1-L204)
-- [SocialController.php:60-89](file://app/Http/Controllers/SocialController.php#L60-L89)
-- [SocialController.php:94-118](file://app/Http/Controllers/SocialController.php#L94-L118)
-- [SocialController.php:34-55](file://app/Http/Controllers/SocialController.php#L34-L55)
+- [SocialController.php:54-83](file://app/Http/Controllers/SocialController.php#L54-L83)
+- [SocialController.php:88-109](file://app/Http/Controllers/SocialController.php#L88-L109)
+- [SocialController.php:36-49](file://app/Http/Controllers/SocialController.php#L36-L49)
+
+### RESTful Routing Configuration
+The social system now provides comprehensive RESTful endpoints:
+
+**Public Endpoints (No Authentication Required):**
+- `GET /social/wall` - Community wall feed
+- `GET /social/stories` - Stories listing
+- `GET /social/reels` - Reels feed
+
+**Authenticated Endpoints (Authentication Required):**
+- `POST /social/wall` - Create new post
+- `POST /social/stories` - Create new story
+- `POST /social/posts/{post}/like` - Like/unlike a post
+- `POST /social/posts/{post}/comment` - Add comment to post
+- `DELETE /social/posts/{post}` - Delete post
+
+**Updated** The routing configuration now provides a comprehensive RESTful interface for all social operations with proper authentication requirements.
+
+**Section sources**
+- [web.php:47-57](file://routes/web.php#L47-L57)
 
 ## Dependency Analysis
 - Controller depends on models for data operations and on policies for authorization.
 - Models depend on Eloquent relationships and casts.
 - Migrations define foreign keys and unique constraints ensuring referential integrity.
 - Views depend on controller-provided data and route helpers.
+- Routes depend on controller methods and request validation classes.
 
 ```mermaid
 graph LR
@@ -552,90 +603,115 @@ SC --> R["Reel"]
 SC --> C["Comment"]
 SC --> L["Like"]
 SC --> POL["Policies"]
+SC --> REQ["Validation Requests"]
 P --> DB["Database"]
 S --> DB
 R --> DB
 C --> DB
 L --> DB
 POL --> DB
+REQ --> SC
 ```
 
 **Diagram sources**
-- [SocialController.php:5-9](file://app/Http/Controllers/SocialController.php#L5-L9)
+- [SocialController.php:5-11](file://app/Http/Controllers/SocialController.php#L5-L11)
 - [PostPolicy.php:5-6](file://app/Policies/PostPolicy.php#L5-L6)
 - [CommentPolicy.php:5-6](file://app/Policies/CommentPolicy.php#L5-L6)
 - [LikePolicy.php:5-6](file://app/Policies/LikePolicy.php#L5-L6)
+- [StorePostRequest.php:8-49](file://app/Http/Requests/StorePostRequest.php#L8-L49)
+- [StoreCommentRequest.php:8-42](file://app/Http/Requests/StoreCommentRequest.php#L8-L42)
 
 **Section sources**
-- [SocialController.php:5-9](file://app/Http/Controllers/SocialController.php#L5-L9)
+- [SocialController.php:5-11](file://app/Http/Controllers/SocialController.php#L5-L11)
 - [PostPolicy.php:5-6](file://app/Policies/PostPolicy.php#L5-L6)
 - [CommentPolicy.php:5-6](file://app/Policies/CommentPolicy.php#L5-L6)
 - [LikePolicy.php:5-6](file://app/Policies/LikePolicy.php#L5-L6)
+- [StorePostRequest.php:8-49](file://app/Http/Requests/StorePostRequest.php#L8-L49)
+- [StoreCommentRequest.php:8-42](file://app/Http/Requests/StoreCommentRequest.php#L8-L42)
 
 ## Performance Considerations
 - Pagination on posts reduces load on the community wall.
 - Indexes on posts (user_id, created_at), stories (user_id, expires_at), reels (user_id, created_at), and comments (post_id, reel_id, parent_id) improve query performance.
 - Casting arrays and counters minimizes ORM overhead.
 - Unique constraints on likes prevent duplicates and support efficient toggling.
+- RESTful endpoints enable efficient caching and CDN optimization.
 
-[No sources needed since this section provides general guidance]
+**Updated** The comprehensive routing configuration enables better performance through proper endpoint categorization and caching strategies.
 
 ## Troubleshooting Guide
-- Post not visible on wall
+- **Post not visible on wall**
   - Check privacy setting; wall filters by public posts.
   - Verify user_id association and timestamps.
-- Like toggle not updating
+- **Like toggle not updating**
   - Ensure AJAX request targets the correct endpoint and receives JSON response.
   - Confirm unique constraints and like existence logic.
-- Comment not appearing
+- **Comment not appearing**
   - Validate nested comment parent_id and post/reel association.
   - Confirm comment_count increment on creation.
-- Story not showing
+- **Story not showing**
   - Confirm expires_at is in the future and user association is present.
-- Authorization errors
+- **Authorization errors**
   - Verify policies allow the current user to delete posts/comments/likes.
+- **Endpoint access issues**
+  - Ensure proper authentication for authenticated endpoints.
+  - Verify route naming and parameter binding.
+
+**Updated** Added troubleshooting guidance for RESTful endpoint access and authentication requirements.
 
 **Section sources**
-- [SocialController.php:18-21](file://app/Http/Controllers/SocialController.php#L18-L21)
-- [SocialController.php:63-78](file://app/Http/Controllers/SocialController.php#L63-L78)
-- [SocialController.php:101-108](file://app/Http/Controllers/SocialController.php#L101-L108)
-- [SocialController.php:157-158](file://app/Http/Controllers/SocialController.php#L157-L158)
+- [SocialController.php:20-28](file://app/Http/Controllers/SocialController.php#L20-L28)
+- [SocialController.php:57-72](file://app/Http/Controllers/SocialController.php#L57-L72)
+- [SocialController.php:92-99](file://app/Http/Controllers/SocialController.php#L92-L99)
+- [SocialController.php:148-154](file://app/Http/Controllers/SocialController.php#L148-L154)
 - [PostPolicy.php:13-24](file://app/Policies/PostPolicy.php#L13-L24)
 - [CommentPolicy.php:13-16](file://app/Policies/CommentPolicy.php#L13-L16)
 - [LikePolicy.php:13-16](file://app/Policies/LikePolicy.php#L13-L16)
 
 ## Conclusion
-The social features system integrates community wall feeds, posts, stories, and reels with robust models, policies, and migrations. It supports privacy controls, media handling, real-time interactions, and scalable indexing. The architecture enables content discovery, engagement metrics, and social graph management while maintaining clear authorization boundaries.
+The social features system integrates community wall feeds, posts, stories, and reels with robust models, policies, and migrations. It supports privacy controls, media handling, real-time interactions, and scalable indexing. The architecture enables content discovery, engagement metrics, and social graph management while maintaining clear authorization boundaries. The comprehensive routing configuration provides RESTful endpoints for all social operations with proper authentication handling.
 
-[No sources needed since this section summarizes without analyzing specific files]
+**Updated** The enhanced routing configuration significantly expands the social features system's capabilities and accessibility, providing a comprehensive RESTful interface for community engagement.
 
 ## Appendices
 
 ### Common Social Interaction Scenarios
-- Publishing a post with images and location
-  - Use the post creation endpoint with validated content and media URLs.
+- **Publishing a post with images and location**
+  - Use the POST `/social/wall` endpoint with validated content and media URLs.
   - Privacy defaults to user preference if unspecified.
-- Liking a post
-  - Toggle like via the dedicated endpoint; counters update automatically.
-- Commenting on a post
-  - Submit comment content; optionally reply to another comment using parent_id.
-- Posting a story
-  - Provide media URL, type, and caption; expires after 24 hours.
-- Discovering reels
-  - Browse the reels feed to see latest videos with engagement metrics.
+- **Liking a post**
+  - Toggle like via the POST `/social/posts/{post}/like` endpoint; counters update automatically.
+- **Commenting on a post**
+  - Submit comment content via POST `/social/posts/{post}/comment`; optionally reply to another comment using parent_id.
+- **Posting a story**
+  - Provide media URL, type, and caption via POST `/social/stories`; expires after 24 hours.
+- **Discovering reels**
+  - Browse the GET `/social/reels` endpoint to see latest videos with engagement metrics.
+- **Deleting a post**
+  - Authorized users can delete posts via DELETE `/social/posts/{post}`.
+
+**Updated** Added comprehensive RESTful endpoint documentation for all social interaction scenarios.
 
 **Section sources**
-- [SocialController.php:34-55](file://app/Http/Controllers/SocialController.php#L34-L55)
-- [SocialController.php:60-89](file://app/Http/Controllers/SocialController.php#L60-L89)
-- [SocialController.php:94-118](file://app/Http/Controllers/SocialController.php#L94-L118)
-- [SocialController.php:149-164](file://app/Http/Controllers/SocialController.php#L149-L164)
-- [SocialController.php:169-177](file://app/Http/Controllers/SocialController.php#L169-L177)
+- [web.php:47-57](file://routes/web.php#L47-L57)
+- [SocialController.php:36-49](file://app/Http/Controllers/SocialController.php#L36-L49)
+- [SocialController.php:54-83](file://app/Http/Controllers/SocialController.php#L54-L83)
+- [SocialController.php:88-109](file://app/Http/Controllers/SocialController.php#L88-L109)
+- [SocialController.php:140-155](file://app/Http/Controllers/SocialController.php#L140-L155)
+- [SocialController.php:160-168](file://app/Http/Controllers/SocialController.php#L160-L168)
+- [SocialController.php:114-122](file://app/Http/Controllers/SocialController.php#L114-L122)
 
 ### Community Building Strategies
-- Encourage storytelling with location tagging and hashtags.
-- Promote engagement by highlighting posts with high likes/comments.
-- Use stories to showcase daily travel moments with timely visibility.
-- Feature reels to drive discovery and organic sharing.
-- Respect privacy settings to maintain trust and safety.
+- **Encourage storytelling with location tagging and hashtags**
+  - Use the comprehensive post creation endpoint to capture rich travel experiences.
+- **Promote engagement by highlighting posts with high likes/comments**
+  - Leverage the RESTful like and comment endpoints for real-time interaction.
+- **Use stories to showcase daily travel moments with timely visibility**
+  - Implement the story posting endpoint for ephemeral content.
+- **Feature reels to drive discovery and organic sharing**
+  - Utilize the reels endpoint for video content discovery.
+- **Respect privacy settings to maintain trust and safety**
+  - Configure privacy controls through the post creation endpoint.
+- **Optimize for performance with proper endpoint categorization**
+  - Separate authenticated and public endpoints for better security and performance.
 
-[No sources needed since this section provides general guidance]
+**Updated** Added strategies for leveraging the comprehensive RESTful endpoint architecture.

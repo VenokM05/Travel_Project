@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreTodoRequest;
+use App\Http\Requests\UpdateTodoRequest;
 use App\Models\Todo;
 use App\Models\Itinerary;
 use Illuminate\Http\Request;
@@ -53,17 +55,9 @@ class TodoController extends Controller
         return view('todos.create', compact('itineraries'));
     }
 
-    public function store(Request $request)
+    public function store(StoreTodoRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date' => 'nullable|date',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'status' => 'required|in:pending,in_progress,completed,cancelled',
-            'category' => 'nullable|string|max:255',
-            'itinerary_id' => 'nullable|exists:itineraries,id',
-        ]);
+        $validated = $request->validated();
 
         $validated['user_id'] = auth()->id();
 
@@ -86,19 +80,11 @@ class TodoController extends Controller
         return view('todos.edit', compact('todo', 'itineraries'));
     }
 
-    public function update(Request $request, Todo $todo)
+    public function update(UpdateTodoRequest $request, Todo $todo)
     {
         $this->authorize('update', $todo);
         
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date' => 'nullable|date',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'status' => 'required|in:pending,in_progress,completed,cancelled',
-            'category' => 'nullable|string|max:255',
-            'itinerary_id' => 'nullable|exists:itineraries,id',
-        ]);
+        $validated = $request->validated();
 
         $todo->update($validated);
 
