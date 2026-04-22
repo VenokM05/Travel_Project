@@ -47,6 +47,11 @@ Route::middleware('auth')->group(function () {
     // Social Features
     Route::prefix('social')->name('social.')->group(function () {
         Route::get('/wall', [App\Http\Controllers\SocialController::class, 'wall'])->name('wall');
+        Route::post('/wall', [App\Http\Controllers\SocialController::class, 'storePost'])->name('post.store');
+        Route::post('/posts/{post}/like', [App\Http\Controllers\SocialController::class, 'likePost'])->name('post.like');
+        Route::post('/posts/{post}/comment', [App\Http\Controllers\SocialController::class, 'commentPost'])->name('post.comment');
+        Route::delete('/posts/{post}', [App\Http\Controllers\SocialController::class, 'deletePost'])->name('post.destroy');
+        Route::post('/stories', [App\Http\Controllers\SocialController::class, 'storeStory'])->name('story.store');
         Route::get('/stories', [App\Http\Controllers\SocialController::class, 'stories'])->name('stories');
         Route::get('/reels', [App\Http\Controllers\SocialController::class, 'reels'])->name('reels');
     });
@@ -66,18 +71,6 @@ Route::middleware('auth')->group(function () {
     // AJAX Photo Upload (for memories)
     Route::post('/upload/photo', [App\Http\Controllers\UploadController::class, 'uploadPhoto'])->name('upload.photo');
     Route::delete('/upload/photo', [App\Http\Controllers\UploadController::class, 'deletePhoto'])->name('upload.photo.delete');
-    
-    // Social Features
-    Route::prefix('social')->name('social.')->group(function () {
-        Route::get('/wall', [App\Http\Controllers\SocialController::class, 'wall'])->name('wall');
-        Route::post('/wall', [App\Http\Controllers\SocialController::class, 'storePost'])->name('post.store');
-        Route::post('/posts/{post}/like', [App\Http\Controllers\SocialController::class, 'likePost'])->name('post.like');
-        Route::post('/posts/{post}/comment', [App\Http\Controllers\SocialController::class, 'commentPost'])->name('post.comment');
-        Route::delete('/posts/{post}', [App\Http\Controllers\SocialController::class, 'deletePost'])->name('post.destroy');
-        Route::post('/stories', [App\Http\Controllers\SocialController::class, 'storeStory'])->name('story.store');
-        Route::get('/stories', [App\Http\Controllers\SocialController::class, 'stories'])->name('stories');
-        Route::get('/reels', [App\Http\Controllers\SocialController::class, 'reels'])->name('reels');
-    });
     
     // Settings
     Route::get('/settings', function () {
